@@ -25,6 +25,30 @@
 
   function setButtons(disabled) { btnOn.disabled = disabled; btnOff.disabled = disabled; }
 
+  // ── Stepper helpers ──────────────────────────────────────────────────────────
+  function stepReset() {
+    ["step-detect", "step-diagnose", "step-heal"].forEach(id => {
+      const el = $(id); if (el) el.className = "step";
+    });
+    ["step-line-1", "step-line-2"].forEach(id => {
+      const el = $(id); if (el) el.className = "step-line";
+    });
+  }
+  function stepActivate(stepId) {
+    const el = $(stepId); if (el) el.className = "step active";
+  }
+  function stepDone(stepId, lineId, variant) {
+    const el = $(stepId); if (el) el.className = "step " + (variant || "done");
+    if (lineId) { const ln = $(lineId); if (ln) ln.className = "step-line done"; }
+  }
+
+  // ── Confidence meter color band ──────────────────────────────────────────────
+  function confBand(pct) {
+    if (pct < 70) return "low";
+    if (pct < 80) return "mid";
+    return "high";
+  }
+
   function reset(mode) {
     $("feed").innerHTML = "";
     $("contacts").innerHTML = "";
@@ -32,6 +56,7 @@
     $("diag-body").classList.add("hidden");
     $("diag-empty").classList.remove("hidden");
     $("verdict").classList.add("hidden");
+    stepReset();
     const pill = $("mode-pill");
     pill.textContent = mode === "on" ? "Sentinel ON" : "Sentinel OFF";
     pill.className = "pill " + (mode === "on" ? "pill-on" : "pill-off");
@@ -67,6 +92,14 @@
   }
 
   function addLog(d) {
+    // Advance stepper based on tag
+    if (d.tag === "DETECT" || d.tag === "CWLOGS" || d.tag === "LOKI") {
+      stepDone("step-detect", "step-line-1");
+      stepActivate("step-diagnose");
+    } else if (d.tag === "HEAL") {
+      stepDone("step-diagnose", "step-line-2");
+      stepDone("step-heal", null, "healed");
+    }
     const line = document.createElement("div");
     line.className = "feed-line";
     line.innerHTML =
@@ -87,7 +120,12 @@
     $("diag-expl").textContent = d.explanation;
     const pct = Math.round((d.confidence || 0) * 100);
     $("diag-conf").textContent = pct + "%";
-    setTimeout(() => ($("diag-meter").style.width = pct + "%"), 50);
+    const meter = $("diag-meter");
+    meter.setAttribute("data-conf", confBand(pct));
+    setTimeout(() => (meter.style.width = pct + "%"), 50);
+    // Advance stepper: diagnosis received
+    stepDone("step-detect", "step-line-1");
+    stepActivate("step-diagnose");
   }
 
   function markResult(d) {
@@ -114,6 +152,9 @@
     v.classList.remove("hidden");
     v.className = "verdict " + (d.verdict.good ? "good" : "bad");
     v.textContent = d.verdict.text;
+    // Finalize stepper
+    stepDone("step-diagnose", "step-line-2");
+    stepDone("step-heal", null, d.verdict.good ? "healed" : "done");
   }
 
   const params = new URLSearchParams(location.search);
@@ -123,6 +164,8 @@
     if (es) es.close();
     reset(mode);
     setButtons(true);
+    // Kick off stepper at DETECT stage
+    stepActivate("step-detect");
     es = new EventSource(`/api/run?scenario=${scenario}&mode=${mode}${fast}`);
     es.addEventListener("scene", (e) => renderScene(JSON.parse(e.data)));
     es.addEventListener("log", (e) => addLog(JSON.parse(e.data)));
@@ -160,6 +203,8 @@
     $("diag-body").classList.add("hidden");
     $("diag-empty").classList.remove("hidden");
     $("verdict").classList.add("hidden");
+    stepReset();
+    stepActivate("step-detect");
     $("mode-pill").textContent = opts.once ? "SCAN" : "● LIVE";
     $("mode-pill").className = "pill pill-on";
     showStatus({ state: "connecting", text: "Connecting to ic-dev…" });
@@ -175,8 +220,14 @@
       const d = JSON.parse(e.data);
       if (d.healthy) {
         addLog({ ts: "", tag: "OK", msg: `healthy — nothing detected in window` });
+        stepDone("step-detect", "step-line-1");
+        stepDone("step-diagnose", "step-line-2");
+        stepDone("step-heal", null, "done");
       } else {
         addLog({ ts: "", tag: "DETECT", msg: `${d.total} detected → WOULD ${d.action}` });
+        stepDone("step-detect", "step-line-1");
+        stepDone("step-diagnose", "step-line-2");
+        stepDone("step-heal", null, "healed");
       }
       // Scan mode: server closes after this detection; mark intentional so the imminent
       // onerror isn't shown as a failure (also used for headless screenshots).

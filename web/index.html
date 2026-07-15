@@ -58,6 +58,24 @@
     </div>
   </section>
 
+  <!-- Pipeline stepper: lights up as DETECT → DIAGNOSE → HEAL fire -->
+  <div class="stepper" id="stepper">
+    <div class="step" id="step-detect">
+      <div class="step-dot"></div>
+      <div class="step-label">DETECT</div>
+    </div>
+    <div class="step-line" id="step-line-1"></div>
+    <div class="step" id="step-diagnose">
+      <div class="step-dot"></div>
+      <div class="step-label">DIAGNOSE</div>
+    </div>
+    <div class="step-line" id="step-line-2"></div>
+    <div class="step" id="step-heal">
+      <div class="step-dot"></div>
+      <div class="step-label">HEAL</div>
+    </div>
+  </div>
+
   <main class="grid">
     <!-- Left: the contact center floor -->
     <div class="panel floor">
@@ -104,6 +122,14 @@
 
   <div id="verdict" class="verdict hidden"></div>
 
+  <!-- Production reality footer -->
+  <footer class="prodbar">
+    <span class="prodbar-item"><span class="prodbar-num">~1,000</span> whole-agent wipes/week · ic-dev</span>
+    <span class="prodbar-sep">·</span>
+    <span class="prodbar-item"><span class="prodbar-num">5–7×</span> cascade amplification (1 real failure → N wipes)</span>
+    <span class="prodbar-sep">·</span>
+    <span class="prodbar-item">Sentinel scope: <span class="prodbar-num">contact-only</span> quarantine → amplification → <span class="prodbar-num">1×</span></span>
+  </footer>
 
   <script src="app.js"></script>
 </body>

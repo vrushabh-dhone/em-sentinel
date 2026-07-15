@@ -48,7 +48,7 @@ body {
 .scenario-pick { display: flex; flex-direction: column; gap: 10px; }
 .tabs { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
 .dd { display: flex; align-items: center; gap: 8px; background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; }
-.dd.live { border-color: #4a1e2a; }
+.dd.live { border-color: #4a1e2a; display: none; }
 .dd-cap { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim); white-space: nowrap; }
 .dd.live .dd-cap { color: var(--red); }
 .cap-ico { font-size: 15px; line-height: 0; vertical-align: -2px; }
@@ -188,4 +188,46 @@ body {
 
 .foot { text-align: center; color: var(--dim); padding: 18px; font-size: 12px; border-top: 1px solid var(--line); }
 
-@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(2,1fr);} }
+/* Pipeline stepper */
+.stepper {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0; padding: 14px 28px 10px; margin: 0 28px;
+}
+.step { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.step-dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 2px solid var(--line); background: var(--panel2);
+  transition: all .3s ease;
+}
+.step-label {
+  font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--dim); transition: color .3s ease;
+}
+.step-line {
+  flex: 1; height: 2px; background: var(--line); min-width: 80px; max-width: 160px;
+  transition: background .4s ease; margin-bottom: 18px;
+}
+.step.active .step-dot  { border-color: var(--cyan); background: var(--cyan); box-shadow: 0 0 0 4px rgba(34,211,238,.2); }
+.step.active .step-label { color: var(--cyan); }
+.step.done  .step-dot  { border-color: var(--green); background: var(--green); }
+.step.done  .step-label { color: var(--green); }
+.step-line.done { background: var(--green); }
+.step.healed .step-dot  { border-color: var(--teal); background: var(--teal); box-shadow: 0 0 0 4px rgba(45,212,191,.2); }
+.step.healed .step-label { color: var(--teal); }
+
+/* Confidence meter color bands */
+.meter-fill[data-conf="low"]  { background: linear-gradient(90deg, var(--red), var(--amber)); }
+.meter-fill[data-conf="mid"]  { background: linear-gradient(90deg, var(--amber), #facc15); }
+.meter-fill[data-conf="high"] { background: linear-gradient(90deg, var(--teal), var(--green)); }
+
+/* Production stats footer */
+.prodbar {
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+  gap: 10px; padding: 12px 28px;
+  background: linear-gradient(90deg, #0c1426 0%, #111726 50%, #0c1426 100%);
+  border-top: 1px solid var(--line); font-size: 12px; color: var(--dim);
+}
+.prodbar-sep { color: var(--line); }
+.prodbar-num { color: var(--amber); font-weight: 700; }
+
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(2,1fr);} .stepper { flex-wrap: wrap; gap: 8px; } .step-line { min-width: 40px; } }
