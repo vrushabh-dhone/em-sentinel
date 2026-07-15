@@ -130,7 +130,7 @@
   }
 
   function addLog(d) {
-    // Advance stepper based on tag
+    // Advance stepper based on tag (only for Sentinel ON path)
     if (d.tag === "DETECT" || d.tag === "CWLOGS" || d.tag === "LOKI") {
       stepDone("step-detect", "step-line-1");
       stepActivate("step-diagnose");
@@ -138,6 +138,7 @@
       stepDone("step-diagnose", "step-line-2");
       stepDone("step-heal", null, "healed");
     }
+    // FQUEUE/FAILURE tags don't advance the stepper — they belong to the OFF path
     const line = document.createElement("div");
     line.className = "feed-line";
     line.innerHTML =
@@ -190,9 +191,16 @@
     v.classList.remove("hidden");
     v.className = "verdict " + (d.verdict.good ? "good" : "bad");
     v.textContent = d.verdict.text;
-    // Finalize stepper
-    stepDone("step-diagnose", "step-line-2");
-    stepDone("step-heal", null, d.verdict.good ? "healed" : "done");
+    // Finalize stepper: good = healed (teal), bad = skipped (red — no diagnosis/heal applied)
+    if (d.verdict.good) {
+      stepDone("step-diagnose", "step-line-2");
+      stepDone("step-heal", null, "healed");
+    } else {
+      stepDone("step-detect", "step-line-1");
+      const diagEl = $("step-diagnose"); if (diagEl) diagEl.className = "step skipped";
+      const line2 = $("step-line-2"); if (line2) line2.className = "step-line skipped";
+      const healEl = $("step-heal"); if (healEl) healEl.className = "step skipped";
+    }
   }
 
   const params = new URLSearchParams(location.search);

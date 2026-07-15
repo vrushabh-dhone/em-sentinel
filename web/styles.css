@@ -216,6 +216,9 @@ body {
 .step-line.done { background: var(--green); }
 .step.healed .step-dot  { border-color: var(--teal); background: var(--teal); box-shadow: 0 0 0 4px rgba(45,212,191,.2); }
 .step.healed .step-label { color: var(--teal); }
+.step.skipped .step-dot  { border-color: var(--red); background: var(--red); opacity: .6; }
+.step.skipped .step-label { color: var(--red); }
+.step-line.skipped { background: var(--red); opacity: .4; }
 
 /* Confidence meter color bands */
 .meter-fill[data-conf="low"]  { background: linear-gradient(90deg, var(--red), var(--amber)); }
