@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EM Sentinel — Self-Healing Reliability Agent</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="nice">NiCE</span>
+      <svg class="shield" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+        <path d="M12 2l8 3v6c0 5-3.4 8.7-8 11-4.6-2.3-8-6-8-11V5l8-3z" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M8.5 12.2l2.3 2.3 4.7-4.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="titles">
+        <h1>EM&nbsp;SENTINEL</h1>
+        <p>Self-Healing Reliability Agent · Entity Management</p>
+      </div>
+    </div>
+    <div class="tagline">Detect → Diagnose → Heal · <span class="dim">the failure-queue cascade, slain.</span></div>
+  </header>
+
+  <section class="controls">
+    <div class="scenario-pick">
+      <div class="tabs">
+        <div class="dd">
+          <span class="dd-cap"><span class="cap-ico">🧪</span> Simulation</span>
+          <select id="sim-select" class="scenario-select" title="Simulation scenario">
+            <option value="" disabled>SELECT</option>
+            <option value="cascade">Failure-Queue Cascade</option>
+            <option value="stuck">Stuck Contact</option>
+            <option value="acw">ACW Stuck</option>
+            <option value="queue">Queue Stuck</option>
+          </select>
+        </div>
+        <div class="dd live">
+          <span class="dd-cap"><span class="cap-ico">●</span> Live · ic-dev</span>
+          <select id="live-select" class="scenario-select" title="Live ic-dev scenario">
+            <option value="" disabled>SELECT</option>
+            <option value="live-cascade">Failure-Queue Cascade</option>
+            <option value="live-stuck">Stuck Contact</option>
+            <option value="live-acw">ACW Stuck</option>
+            <option value="live-queue">Queue Stuck</option>
+          </select>
+        </div>
+      </div>
+      <div id="scenario-label" class="scenario-label"></div>
+    </div>
+    <div class="buttons">
+      <button id="btn-off" class="btn btn-danger">▶ Run WITHOUT Sentinel</button>
+      <button id="btn-on" class="btn btn-safe">🛡 Run WITH Sentinel</button>
+    </div>
+    <div id="live-controls" class="buttons" style="display:none">
+      <button id="btn-scan" class="btn btn-safe">⟳ Scan 24h</button>
+      <button id="btn-watch" class="btn btn-danger">● Watch live (15m)</button>
+    </div>
+  </section>
+
+  <main class="grid">
+    <!-- Left: the contact center floor -->
+    <div class="panel floor">
+      <div class="panel-head">
+        <h2>Live Entity State</h2>
+        <span id="mode-pill" class="pill pill-idle">idle</span>
+      </div>
+      <div class="agent-row">
+        <div id="agent-tile" class="tile agent">
+          <div class="tile-label">AGENT</div>
+          <div class="tile-id">#42</div>
+          <div class="tile-state">WorkingContacts</div>
+        </div>
+        <div class="arrow">handles ▸</div>
+      </div>
+      <div id="contacts" class="contacts"></div>
+    </div>
+
+    <!-- Right: brains + feed -->
+    <div class="col-right">
+      <div class="panel diagnosis">
+        <div class="panel-head"><h2>AI Diagnosis</h2><span id="diag-engine" class="badge">FSM-grounded</span></div>
+        <div id="diag-empty" class="diag-empty">Awaiting a trigger…</div>
+        <div id="diag-body" class="diag-body hidden">
+          <div class="diag-row"><span class="k">Root cause</span><span id="diag-root" class="v"></span></div>
+          <div class="diag-row"><span class="k">Action</span><span id="diag-action" class="v action"></span></div>
+          <div class="diag-row conf">
+            <span class="k">Confidence</span>
+            <div class="meter"><div id="diag-meter" class="meter-fill"></div></div>
+            <span id="diag-conf" class="v"></span>
+          </div>
+          <p id="diag-expl" class="diag-expl"></p>
+        </div>
+      </div>
+
+      <div class="panel feed">
+        <div class="panel-head"><h2>Event Feed</h2></div>
+        <div id="feed" class="feed-list"></div>
+      </div>
+    </div>
+  </main>
+
+  <section id="stats" class="stats"></section>
+
+  <div id="verdict" class="verdict hidden"></div>
+
+
+  <script src="app.js"></script>
+</body>
+</html>
