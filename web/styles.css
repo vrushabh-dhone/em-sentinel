@@ -75,6 +75,24 @@ body {
 .tab-live { color: var(--red); }
 .tab-live.tab-active { color: var(--red); border-color: #5b2333; background: #1c0f15; }
 .scenario-label { color: var(--dim); }
+
+/* Use-case card */
+.usecase-card {
+  display: flex; align-items: flex-start; gap: 0;
+  background: var(--panel2); border: 1px solid var(--line);
+  border-radius: 10px; padding: 14px 18px; margin-top: 10px;
+}
+.usecase-card.hidden { display: none; }
+.usecase-col { flex: 1; padding: 0 14px; }
+.usecase-col:first-child { padding-left: 0; }
+.usecase-col:last-child { padding-right: 0; }
+.usecase-heading {
+  font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--dim); margin-bottom: 5px; font-weight: 700;
+}
+.usecase-text { font-size: 13px; color: var(--text); line-height: 1.5; }
+.usecase-fix { color: var(--teal); }
+.usecase-divider { width: 1px; background: var(--line); align-self: stretch; margin: 0 4px; flex-shrink: 0; }
 .scenario-label code { color: var(--cyan); background: var(--panel2); padding: 1px 6px; border-radius: 4px; }
 .buttons { display: flex; gap: 12px; }
 .btn {

@@ -14,6 +14,29 @@
     "live-acw": "<strong>Live (ic-dev):</strong> agent contacts stuck in <code>AFTER_CONTACT_WORK</code> — real <code>AgentContactStateChangeV2</code> dwell (mon-na1 Loki).",
     "live-queue": "<strong>Live (ic-dev):</strong> contacts stuck in <code>QUEUING</code> past the match SLA — real <code>ContactStateChangeV2</code> dwell (mon-na1 Loki).",
   };
+
+  const USECASES = {
+    cascade: {
+      usecase: "A single failed AssignContact call on one contact triggers the failure-queue Lambda, which scopes cleanup to the whole agent — wiping all healthy contacts for that agent in DynamoDB.",
+      problem: "1 real failure cascades to 5–7× phantom wipes. ~1,000 whole-agent wipes/week in ic-dev. Every healthy contact on the agent loses state, causing customer drops and agent unavailability.",
+      fix: "Sentinel detects the cascade seed before the Lambda fires, applies CASCADE_CIRCUIT_BREAK to quarantine only the failing contact, and preserves all healthy contacts. Amplification drops from 5–7× to 1×.",
+    },
+    stuck: {
+      usecase: "A contact enters ROUTING when a match is found and an agent is ringing. If the agent doesn't pick up within the ring timeout (~60s), the contact should be requeued — but sometimes it remains stuck in ROUTING indefinitely.",
+      problem: "The customer is connected to no one. The agent slot appears occupied. Without detection, the contact dwell grows forever — the customer abandons, the agent appears busy, and the contact is never automatically requeued.",
+      fix: "Sentinel's dwell inspector detects ROUTING past the ring timeout, diagnoses it as a missed ring, and issues REQUEUE_CONTACT — the contact re-enters matching in ~1s and the customer is kept on the line.",
+    },
+    acw: {
+      usecase: "After a call ends, a contact enters AFTER_CONTACT_WORK (ACW) so the agent can complete wrap-up tasks. The ACW timeout is typically 30s. If the contact never leaves ACW, the agent is permanently blocked from receiving new contacts.",
+      problem: "The agent shows as 'busy' even though they finished the call. New inbound contacts can't route to them. In high-traffic periods, this silently reduces routing capacity — customers queue longer while idle agents are unavailable.",
+      fix: "Sentinel detects dwell in ACW past the timeout, diagnoses the agent as blocked, and issues TERMINATE_CONTACT to force-release the ACW state — freeing the agent to take contacts again in ~1s.",
+    },
+    queue: {
+      usecase: "A contact enters QUEUING when FindMatch is searching for an available agent. Normally a match is produced within seconds. If FindMatch or Match Processor is backlogged, the contact can sit in QUEUING past the match SLA indefinitely.",
+      problem: "The customer is waiting with no agent assigned. Available agents exist but the contact is invisible to the routing engine. Without remediation, the customer abandons; the contact is never retried automatically.",
+      fix: "Sentinel detects QUEUING past the match SLA, diagnoses a stalled FindMatch cycle, and issues SYNC_CONTACT_V2 — this re-triggers the contact in the matching pipeline so an available agent can be matched within ~1s.",
+    },
+  };
   // signal + default scan window per live option
   const LIVE = {
     "live-cascade": { signal: "cascade", scan: "24h" },
@@ -290,6 +313,16 @@
     scenario = name;
     disconnectLive();
     $("scenario-label").innerHTML = LABELS[name];
+    const uc = USECASES[name];
+    const card = $("usecase-card");
+    if (uc) {
+      $("uc-usecase").textContent = uc.usecase;
+      $("uc-problem").textContent = uc.problem;
+      $("uc-fix").textContent = uc.fix;
+      card.classList.remove("hidden");
+    } else {
+      card.classList.add("hidden");
+    }
     const live = name.startsWith("live-");
     if (live) liveName = name;
     // Mutually exclusive dropdowns: the active group shows the choice, the other resets.

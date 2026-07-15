@@ -75,7 +75,6 @@ func StuckFixture() (*Store, *sentinel.Tracker, Scenario) {
 	const agent int32 = 50
 	const bystander int32 = 51
 	const stuck = int64(2001)
-	contacts := []int64{2001, 2002}
 
 	store := NewStore()
 	tracker := sentinel.NewTracker()
@@ -89,15 +88,17 @@ func StuckFixture() (*Store, *sentinel.Tracker, Scenario) {
 		ContactNo: stuck, AgentNo: agent, State: sentinel.StateRouting,
 		Timestamp: now.Add(-92 * time.Second), Trigger: "MATCH_FOUND", BusNo: 77, TenantID: "demo-tenant",
 	})
-	store.Put(&Record{Kind: KindContact, ID: 2002, AgentNo: agent, State: string(sentinel.StateWithAgent)})
-	tracker.OnContactStateChange(sentinel.ContactStateChange{
-		ContactNo: 2002, AgentNo: agent, State: sentinel.StateWithAgent,
-		Timestamp: now, Trigger: "AGENT_ASSIGNED", BusNo: 77, TenantID: "demo-tenant",
-	})
+	for _, c := range []int64{2002, 2003, 2004} {
+		store.Put(&Record{Kind: KindContact, ID: c, AgentNo: agent, State: string(sentinel.StateWithAgent)})
+		tracker.OnContactStateChange(sentinel.ContactStateChange{
+			ContactNo: c, AgentNo: agent, State: sentinel.StateWithAgent,
+			Timestamp: now, Trigger: "AGENT_ASSIGNED", BusNo: 77, TenantID: "demo-tenant",
+		})
+	}
 	store.Put(&Record{Kind: KindContact, ID: 2101, AgentNo: bystander, State: string(sentinel.StateWithAgent)})
 	store.Put(&Record{Kind: KindContact, ID: 2102, AgentNo: bystander, State: string(sentinel.StateWithAgent)})
 
-	return store, tracker, Scenario{AgentNo: agent, SeedContact: stuck, AllContacts: contacts}
+	return store, tracker, Scenario{AgentNo: agent, SeedContact: stuck, AllContacts: []int64{2001, 2002, 2003, 2004}}
 }
 
 // ACWFixture: agent 60 with a contact wedged in AFTER_CONTACT_WORK past the ACW timeout,
@@ -107,7 +108,6 @@ func ACWFixture() (*Store, *sentinel.Tracker, Scenario) {
 	const agent int32 = 60
 	const bystander int32 = 61
 	const stuck = int64(3001)
-	contacts := []int64{3001, 3002}
 
 	store := NewStore()
 	tracker := sentinel.NewTracker()
@@ -116,15 +116,17 @@ func ACWFixture() (*Store, *sentinel.Tracker, Scenario) {
 	store.Put(&Record{Kind: KindAgent, ID: int64(agent), AgentNo: agent, State: "WorkingContacts"})
 	store.Put(&Record{Kind: KindAgent, ID: int64(bystander), AgentNo: bystander, State: "WorkingContacts"})
 	store.Put(&Record{Kind: KindContact, ID: stuck, AgentNo: agent, State: string(sentinel.AgentAfterContactWork), Stuck: true})
-	store.Put(&Record{Kind: KindContact, ID: 3002, AgentNo: agent, State: string(sentinel.StateWithAgent)})
 	tracker.OnContactStateChange(sentinel.ContactStateChange{
 		ContactNo: stuck, AgentNo: agent, State: sentinel.StateWithAgent,
 		Timestamp: now.Add(-120 * time.Second), Trigger: "ENTER_ACW", BusNo: 88, TenantID: "demo-tenant",
 	})
+	for _, c := range []int64{3002, 3003, 3004} {
+		store.Put(&Record{Kind: KindContact, ID: c, AgentNo: agent, State: string(sentinel.StateWithAgent)})
+	}
 	store.Put(&Record{Kind: KindContact, ID: 3101, AgentNo: bystander, State: string(sentinel.StateWithAgent)})
 	store.Put(&Record{Kind: KindContact, ID: 3102, AgentNo: bystander, State: string(sentinel.StateWithAgent)})
 
-	return store, tracker, Scenario{AgentNo: agent, SeedContact: stuck, AllContacts: contacts}
+	return store, tracker, Scenario{AgentNo: agent, SeedContact: stuck, AllContacts: []int64{3001, 3002, 3003, 3004}}
 }
 
 // QueueFixture: agent 70 available, but contact 4001 is stuck in QUEUING past the match SLA
@@ -134,7 +136,6 @@ func QueueFixture() (*Store, *sentinel.Tracker, Scenario) {
 	const agent int32 = 70
 	const bystander int32 = 71
 	const stuck = int64(4001)
-	contacts := []int64{4001}
 
 	store := NewStore()
 	tracker := sentinel.NewTracker()
@@ -142,12 +143,15 @@ func QueueFixture() (*Store, *sentinel.Tracker, Scenario) {
 
 	store.Put(&Record{Kind: KindAgent, ID: int64(agent), AgentNo: agent, State: "AwaitingContacts"})
 	store.Put(&Record{Kind: KindAgent, ID: int64(bystander), AgentNo: bystander, State: "AwaitingContacts"})
-	store.Put(&Record{Kind: KindContact, ID: stuck, AgentNo: 0, State: string(sentinel.StateQueuing), Stuck: true})
+	// stuck contact shown under agent 70 on the floor so it's visible
+	store.Put(&Record{Kind: KindContact, ID: stuck, AgentNo: agent, State: string(sentinel.StateQueuing), Stuck: true})
 	tracker.OnContactStateChange(sentinel.ContactStateChange{
-		ContactNo: stuck, State: sentinel.StateQueuing,
+		ContactNo: stuck, AgentNo: agent, State: sentinel.StateQueuing,
 		Timestamp: now.Add(-300 * time.Second), Trigger: "QUEUED", BusNo: 99, TenantID: "demo-tenant",
 	})
+	store.Put(&Record{Kind: KindContact, ID: 4002, AgentNo: agent, State: string(sentinel.StateWithAgent)})
 	store.Put(&Record{Kind: KindContact, ID: 4101, AgentNo: bystander, State: string(sentinel.StateWithAgent)})
+	store.Put(&Record{Kind: KindContact, ID: 4102, AgentNo: bystander, State: string(sentinel.StateWithAgent)})
 
-	return store, tracker, Scenario{AgentNo: agent, SeedContact: stuck, AllContacts: contacts}
+	return store, tracker, Scenario{AgentNo: agent, SeedContact: stuck, AllContacts: []int64{4001, 4002}}
 }
