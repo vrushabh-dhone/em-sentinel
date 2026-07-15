@@ -108,7 +108,9 @@ body {
 .pill-on { color: #8af0dd; background: #0f2b27; border: 1px solid #14463f; }
 
 /* Floor / tiles */
-.agent-row { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+.floor-section { margin-bottom: 22px; }
+.floor-section:last-child { margin-bottom: 0; }
+.agent-row { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
 .arrow { color: var(--dim); font-size: 12px; }
 .contacts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 .tile {

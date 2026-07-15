@@ -109,6 +109,60 @@ func ACWFixture() (*Store, *sentinel.Tracker, Scenario) {
 	return store, tracker, Scenario{AgentNo: agent, SeedContact: stuck, AllContacts: contacts}
 }
 
+// MultiAgentFixture: two agents (#42 and #55) both active. Contact #1001 on agent #42
+// fails AssignContact. Without Sentinel: whole-agent cleanup wipes agent #42 + its 3
+// healthy contacts (#1002-#1004). Agent #55 and its contacts (#5001-#5003) are untouched.
+// With Sentinel: circuit breaker quarantines only #1001 — #42 + victims preserved.
+func MultiAgentFixture() (*Store, *sentinel.Tracker, Scenario) {
+	const agentA int32 = 42
+	const agentB int32 = 55
+	seed := int64(1001)
+	contactsA := []int64{1001, 1002, 1003, 1004}
+	contactsB := []int64{5001, 5002, 5003}
+
+	store := NewStore()
+	tracker := sentinel.NewTracker()
+	now := time.Now()
+
+	store.Put(&Record{Kind: KindAgent, ID: int64(agentA), AgentNo: agentA, State: "WorkingContacts"})
+	store.Put(&Record{Kind: KindAgent, ID: int64(agentB), AgentNo: agentB, State: "WorkingContacts"})
+
+	for _, c := range contactsA {
+		state := sentinel.StateWithAgent
+		if c == seed {
+			state = sentinel.StateRouting
+		}
+		store.Put(&Record{Kind: KindContact, ID: c, AgentNo: agentA, State: string(state)})
+		tracker.OnContactStateChange(sentinel.ContactStateChange{
+			ContactNo: c, AgentNo: agentA, State: state, Timestamp: now,
+			Trigger: "AGENT_ASSIGNED", BusNo: 123, TenantID: "demo-tenant",
+		})
+	}
+	for _, c := range contactsB {
+		store.Put(&Record{Kind: KindContact, ID: c, AgentNo: agentB, State: string(sentinel.StateWithAgent)})
+		tracker.OnContactStateChange(sentinel.ContactStateChange{
+			ContactNo: c, AgentNo: agentB, State: sentinel.StateWithAgent, Timestamp: now,
+			Trigger: "AGENT_ASSIGNED", BusNo: 123, TenantID: "demo-tenant",
+		})
+	}
+
+	sc := Scenario{
+		AgentNo:     agentA,
+		SeedContact: seed,
+		AllContacts: contactsA,
+		Seed: sentinel.FailureRecord{
+			Service:   "orch-entity-contact",
+			Method:    "AssignContact",
+			ContactNo: seed,
+			AgentNo:   agentA,
+			BusNo:     123,
+			TenantID:  "demo-tenant",
+			Reason:    "INVALID_ARGUMENT: AgentNo is incorrect",
+		},
+	}
+	return store, tracker, sc
+}
+
 // QueueFixture: agent 70 available, but contact 4001 is stuck in QUEUING past the match SLA
 // (no match produced — FindMatch/Match Processor backlog).
 func QueueFixture() (*Store, *sentinel.Tracker, Scenario) {

@@ -6,6 +6,7 @@
 
   const LABELS = {
     cascade: "<strong>Scenario:</strong> Agent #42 is handling 6 contacts. Contact #1001 fails <code>AssignContact</code>.",
+    multi: "<strong>Scenario:</strong> Two agents (#42 and #55) active. Contact #1001 fails <code>AssignContact</code> on agent #42 — does the cascade spread?",
     stuck: "<strong>Scenario:</strong> Agent #50; contact #2001 is stuck in <code>ROUTING</code> past the ring timeout.",
     acw: "<strong>Scenario:</strong> Agent #60; contact #3001 stuck in <code>AFTER_CONTACT_WORK</code> past the ACW timeout — agent blocked.",
     queue: "<strong>Scenario:</strong> Contact #4001 stuck in <code>QUEUING</code> past the match SLA while agent #70 is available.",
@@ -51,7 +52,7 @@
 
   function reset(mode) {
     $("feed").innerHTML = "";
-    $("contacts").innerHTML = "";
+    $("floor").innerHTML = "";
     $("stats").innerHTML = "";
     $("diag-body").classList.add("hidden");
     $("diag-empty").classList.remove("hidden");
@@ -60,7 +61,6 @@
     const pill = $("mode-pill");
     pill.textContent = mode === "on" ? "Sentinel ON" : "Sentinel OFF";
     pill.className = "pill " + (mode === "on" ? "pill-on" : "pill-off");
-    $("agent-tile").className = "tile agent";
   }
 
   function tileClassFor(rec) {
@@ -71,24 +71,62 @@
     return "tile healthy";
   }
 
+  // renderScene builds the floor dynamically from all agent+contact records.
+  // Works for single-agent (all existing scenarios) and multi-agent equally.
   function renderScene(d) {
-    const agentWiped = d.records.some((r) => r.Kind === "AGENT" && r.Wiped);
-    $("agent-tile").className = "tile agent" + (agentWiped ? " wiped" : "");
-    $("agent-tile").querySelector(".tile-id").textContent = "#" + d.agentNo;
+    const floor = $("floor");
+    floor.innerHTML = "";
 
-    const contacts = d.records.filter((r) => r.Kind === "CONTACT").sort((a, b) => a.ID - b.ID);
-    const host = $("contacts");
-    host.innerHTML = "";
-    for (const r of contacts) {
-      const el = document.createElement("div");
-      el.className = tileClassFor(r);
-      el.dataset.id = r.ID;
-      el.innerHTML =
-        `<div class="tile-label">CONTACT</div>` +
-        `<div class="tile-id">#${r.ID}</div>` +
-        `<div class="tile-state">${r.Wiped ? "—" : r.State}</div>`;
-      host.appendChild(el);
-    }
+    // Group contacts by agentNo
+    const agents = d.records.filter((r) => r.Kind === "AGENT").sort((a, b) => a.ID - b.ID);
+    const contactsByAgent = {};
+    d.records.filter((r) => r.Kind === "CONTACT").forEach((r) => {
+      const key = r.AgentNo || 0;
+      if (!contactsByAgent[key]) contactsByAgent[key] = [];
+      contactsByAgent[key].push(r);
+    });
+
+    // For single-agent scenarios the store has exactly 1 agent; multi has 2+
+    agents.forEach((ag) => {
+      const agWiped = ag.Wiped;
+      const section = document.createElement("div");
+      section.className = "floor-section";
+
+      const agentRow = document.createElement("div");
+      agentRow.className = "agent-row";
+
+      const agTile = document.createElement("div");
+      agTile.className = "tile agent" + (agWiped ? " wiped" : "");
+      agTile.dataset.id = "agent-" + ag.ID;
+      agTile.innerHTML =
+        `<div class="tile-label">AGENT</div>` +
+        `<div class="tile-id">#${ag.ID}</div>` +
+        `<div class="tile-state">${agWiped ? "WIPED" : ag.State}</div>`;
+      agentRow.appendChild(agTile);
+
+      const arrow = document.createElement("div");
+      arrow.className = "arrow";
+      arrow.textContent = "handles ▸";
+      agentRow.appendChild(arrow);
+      section.appendChild(agentRow);
+
+      const contactGrid = document.createElement("div");
+      contactGrid.className = "contacts";
+      const agContacts = (contactsByAgent[ag.AgentNo] || []).sort((a, b) => a.ID - b.ID);
+      agContacts.forEach((r) => {
+        const el = document.createElement("div");
+        el.className = tileClassFor(r);
+        el.dataset.id = r.ID;
+        el.innerHTML =
+          `<div class="tile-label">CONTACT</div>` +
+          `<div class="tile-id">#${r.ID}</div>` +
+          `<div class="tile-state">${r.Wiped ? "—" : r.State}</div>`;
+        contactGrid.appendChild(el);
+      });
+
+      section.appendChild(contactGrid);
+      floor.appendChild(section);
+    });
   }
 
   function addLog(d) {
@@ -267,7 +305,7 @@
 
   let initial = params.get("scenario");
   if (initial === "live") initial = "live-cascade"; // back-compat
-  pickScenario(["cascade", "stuck", "acw", "queue", "live-cascade", "live-stuck", "live-acw", "live-queue"].includes(initial) ? initial : "cascade");
+  pickScenario(["cascade", "multi", "stuck", "acw", "queue", "live-cascade", "live-stuck", "live-acw", "live-queue"].includes(initial) ? initial : "cascade");
 
   // Headless/demo autorun: ?autorun=on|off fires a run on load.
   const autorun = params.get("autorun");
