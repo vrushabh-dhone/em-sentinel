@@ -6,7 +6,6 @@
 
   const LABELS = {
     cascade: "<strong>Scenario:</strong> Agent #42 is handling 6 contacts. Contact #1001 fails <code>AssignContact</code>.",
-    multi: "<strong>Scenario:</strong> Two agents (#42 and #55) active. Contact #1001 fails <code>AssignContact</code> on agent #42 — does the cascade spread?",
     stuck: "<strong>Scenario:</strong> Agent #50; contact #2001 is stuck in <code>ROUTING</code> past the ring timeout.",
     acw: "<strong>Scenario:</strong> Agent #60; contact #3001 stuck in <code>AFTER_CONTACT_WORK</code> past the ACW timeout — agent blocked.",
     queue: "<strong>Scenario:</strong> Contact #4001 stuck in <code>QUEUING</code> past the match SLA while agent #70 is available.",
@@ -313,7 +312,7 @@
 
   let initial = params.get("scenario");
   if (initial === "live") initial = "live-cascade"; // back-compat
-  pickScenario(["cascade", "multi", "stuck", "acw", "queue", "live-cascade", "live-stuck", "live-acw", "live-queue"].includes(initial) ? initial : "cascade");
+  pickScenario(["cascade", "stuck", "acw", "queue", "live-cascade", "live-stuck", "live-acw", "live-queue"].includes(initial) ? initial : "cascade");
 
   // Headless/demo autorun: ?autorun=on|off fires a run on load.
   const autorun = params.get("autorun");

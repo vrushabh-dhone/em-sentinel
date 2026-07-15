@@ -111,8 +111,6 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 		runACW(w, fl, sentinelOn, step)
 	case "queue":
 		runQueue(w, fl, sentinelOn, step)
-	case "multi":
-		runMulti(w, fl, sentinelOn, step)
 	default:
 		runCascade(w, fl, sentinelOn, step)
 	}
@@ -389,71 +387,6 @@ func runQueue(w http.ResponseWriter, fl http.Flusher, sentinelOn bool, step func
 		fmt.Sprintf("💥 Contact %d stuck in QUEUING — match never produced; customer abandons.", sc.SeedContact),
 		fmt.Sprintf("🛡  Sentinel re-synced contact %d (SyncContactV2) — re-entered matching, customer kept.", sc.SeedContact),
 		det, stats)
-}
-
-// ---- Scenario 5: multi-agent cascade ----
-
-func runMulti(w http.ResponseWriter, fl http.Flusher, sentinelOn bool, step func()) {
-	store, tracker, sc := sim.MultiAgentFixture()
-	fq := sim.NewFailureQueue(store, tracker)
-
-	sse(w, fl, "scene", scene(sentinelOn, sc.AgentNo, store))
-	step()
-	sse(w, fl, "log", logLine("FAILURE", fmt.Sprintf(
-		"Contact %d failed AssignContact to agent %d — %q. Failure record routed to failure-queue (SQS).",
-		sc.SeedContact, sc.AgentNo, sc.Seed.Reason)))
-	step()
-
-	var result sentinel.HealResult
-	if sentinelOn {
-		det := sentinel.NewDetector(tracker)
-		healer := sentinel.NewHealer(fq)
-		if detection, fired := det.InspectFailure(sc.Seed); fired {
-			sse(w, fl, "log", logLine("DETECT", fmt.Sprintf(
-				"⚡ CASCADE SEED DETECTED [%s] — agent #%d has %d healthy contact(s) at risk: %v",
-				detection.Severity, sc.AgentNo, len(detection.VictimsAtRisk), detection.VictimsAtRisk)))
-			step()
-			diag := emitDiagnosis(w, fl, detection)
-			step()
-			result = healer.Apply(detection, diag)
-			sse(w, fl, "log", logLine("HEAL", "🛡  "+result.Message))
-		}
-	} else {
-		sse(w, fl, "log", logLine("FQUEUE", "failure-queue Lambda: getRelatedRecords → whole-agent cleanup scope"))
-		step()
-		sse(w, fl, "log", logLine("FQUEUE", fmt.Sprintf("\"Agent record ttl set\" agentNo=%d (entityoperations.go:76)", sc.AgentNo)))
-		result = fq.WholeAgentCleanup(sc.SeedContact, sc.AgentNo)
-		sse(w, fl, "log", logLine("FQUEUE", result.Message))
-		sse(w, fl, "log", logLine("FQUEUE", "Agent #55 and its 3 contacts unaffected — but cascade risk is now proven."))
-	}
-	step()
-
-	store.ExpireDue()
-	sse(w, fl, "result", map[string]any{"quarantined": result.Quarantined, "preserved": result.Preserved})
-	sse(w, fl, "scene", scene(sentinelOn, sc.AgentNo, store))
-	step()
-
-	wiped := countWipedContacts(store.Snapshot())
-	saved := 0
-	if sentinelOn {
-		saved = len(sc.AllContacts) - wiped
-	}
-	amp := float64(wiped)
-	verdict := map[string]any{"good": false, "text": fmt.Sprintf(
-		"💥 Cascade — 1 real failure wiped %d contacts + agent #%d. Agent #55 survived by luck.", wiped, sc.AgentNo)}
-	if sentinelOn {
-		verdict = map[string]any{"good": true, "text": fmt.Sprintf(
-			"🛡  Cascade stopped — %d contacts saved on agent #%d. Agent #55 never at risk.", saved, sc.AgentNo)}
-	}
-	sse(w, fl, "summary", map[string]any{
-		"verdict": verdict,
-		"stats": []map[string]any{
-			{"num": "1", "label": "Real failures", "kind": ""},
-			{"num": fmt.Sprintf("%d", wiped), "label": "Contacts wiped", "kind": "danger"},
-			{"num": fmt.Sprintf("%d", saved), "label": "Contacts saved", "kind": "safe"},
-			{"num": fmt.Sprintf("%.0f×", amp), "label": "Amplification", "kind": "amp"},
-		},
-	})
 }
 
 func scene(sentinelOn bool, agentNo int32, store *sim.Store) map[string]any {
