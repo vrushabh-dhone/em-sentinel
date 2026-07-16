@@ -43,7 +43,7 @@ body {
 /* Controls */
 .controls { padding: 16px 28px 0; }
 .controls-row {
-  display: flex; align-items: center; gap: 16px;
+  display: flex; align-items: stretch; gap: 16px;
 }
 /* scenario-pick no longer exists — dropdowns sit directly in controls-row */
 .tabs { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
@@ -118,10 +118,10 @@ body {
 .uc-box-fix .uc-body      { color: #a7f3ec; }
 @media (max-width: 900px) { .usecase-card { grid-template-columns: 1fr; } }
 .scenario-label code { color: var(--cyan); background: var(--panel2); padding: 1px 6px; border-radius: 4px; }
-.buttons { display: flex; gap: 12px; }
+.buttons { display: flex; gap: 12px; align-items: stretch; }
 .btn {
   border: 1px solid var(--line); background: var(--panel2); color: var(--text);
-  padding: 11px 18px; border-radius: 8px; font-size: 14px; font-weight: 600;
+  padding: 0 18px; border-radius: 8px; font-size: 14px; font-weight: 600;
   cursor: pointer; transition: transform .08s ease, box-shadow .2s ease, opacity .2s;
 }
 .btn:hover { transform: translateY(-1px); }
@@ -232,12 +232,12 @@ body {
 
 .foot { text-align: center; color: var(--dim); padding: 18px; font-size: 12px; border-top: 1px solid var(--line); }
 
-/* Pipeline stepper — inline pill between dropdown and buttons */
+/* Pipeline stepper — inline pill, same padding as .dd so heights match */
 .stepper {
   display: flex; align-items: center; justify-content: center;
-  gap: 0; padding: 10px 24px; flex: 1;
-  background: var(--panel2); border: 1px solid var(--line);
-  border-radius: 10px; min-width: 260px; align-self: stretch;
+  gap: 0; padding: 6px 24px; flex: 1;
+  background: var(--bg2); border: 1px solid var(--line);
+  border-radius: 10px; min-width: 260px;
 }
 .step { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .step-dot {
