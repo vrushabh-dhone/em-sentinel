@@ -23,36 +23,31 @@
   </header>
 
   <section class="controls">
-    <!-- Top row: [1] dropdown · [3] stepper · [2] buttons -->
+    <!-- Top row: [1] dropdown | [3] stepper | [2] buttons — all same height -->
     <div class="controls-row">
       <!-- 1: Simulation dropdown -->
-      <div class="scenario-pick">
-        <div class="tabs">
-          <div class="dd">
-            <span class="dd-cap"><span class="cap-ico">🧪</span> Simulation</span>
-            <select id="sim-select" class="scenario-select" title="Simulation scenario">
-              <option value="" disabled>SELECT</option>
-              <option value="cascade">Failure-Queue Cascade</option>
-              <option value="stuck">Stuck Contact</option>
-              <option value="acw">ACW Stuck</option>
-              <option value="queue">Queue Stuck</option>
-            </select>
-          </div>
-          <div class="dd live">
-            <span class="dd-cap"><span class="cap-ico">●</span> Live · ic-dev</span>
-            <select id="live-select" class="scenario-select" title="Live ic-dev scenario">
-              <option value="" disabled>SELECT</option>
-              <option value="live-cascade">Failure-Queue Cascade</option>
-              <option value="live-stuck">Stuck Contact</option>
-              <option value="live-acw">ACW Stuck</option>
-              <option value="live-queue">Queue Stuck</option>
-            </select>
-          </div>
-        </div>
-        <div id="scenario-label" class="scenario-label"></div>
+      <div class="dd">
+        <span class="dd-cap"><span class="cap-ico">🧪</span> Simulation</span>
+        <select id="sim-select" class="scenario-select" title="Simulation scenario">
+          <option value="" disabled>SELECT</option>
+          <option value="cascade">Failure-Queue Cascade</option>
+          <option value="stuck">Stuck Contact</option>
+          <option value="acw">ACW Stuck</option>
+          <option value="queue">Queue Stuck</option>
+        </select>
+      </div>
+      <div class="dd live">
+        <span class="dd-cap"><span class="cap-ico">●</span> Live · ic-dev</span>
+        <select id="live-select" class="scenario-select" title="Live ic-dev scenario">
+          <option value="" disabled>SELECT</option>
+          <option value="live-cascade">Failure-Queue Cascade</option>
+          <option value="live-stuck">Stuck Contact</option>
+          <option value="live-acw">ACW Stuck</option>
+          <option value="live-queue">Queue Stuck</option>
+        </select>
       </div>
 
-      <!-- 3: Pipeline stepper (inline) -->
+      <!-- 3: Pipeline stepper -->
       <div class="stepper" id="stepper">
         <div class="step" id="step-detect">
           <div class="step-dot"></div>
@@ -81,7 +76,8 @@
       </div>
     </div>
 
-    <!-- Use-case card: full width below the row -->
+    <!-- Scenario label + use-case card: full width below the row -->
+    <div id="scenario-label" class="scenario-label"></div>
     <div id="usecase-card" class="usecase-card hidden">
       <div class="uc-box uc-box-usecase">
         <div class="uc-chip">🎯 Use Case</div>

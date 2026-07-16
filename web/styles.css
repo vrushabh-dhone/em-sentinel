@@ -43,9 +43,9 @@ body {
 /* Controls */
 .controls { padding: 16px 28px 0; }
 .controls-row {
-  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 16px;
 }
-.scenario-pick { display: flex; flex-direction: column; gap: 6px; }
+/* scenario-pick no longer exists — dropdowns sit directly in controls-row */
 .tabs { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
 .dd { display: flex; align-items: center; gap: 8px; background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; }
 .dd.live { border-color: #4a1e2a; display: none; }
@@ -74,7 +74,7 @@ body {
 .tab-active { background: var(--panel2); color: var(--cyan); border-color: #1e4a52; }
 .tab-live { color: var(--red); }
 .tab-live.tab-active { color: var(--red); border-color: #5b2333; background: #1c0f15; }
-.scenario-label { color: var(--dim); }
+.scenario-label { color: var(--dim); margin-top: 10px; }
 
 /* Use-case 3-box row */
 .usecase-card {
@@ -232,12 +232,12 @@ body {
 
 .foot { text-align: center; color: var(--dim); padding: 18px; font-size: 12px; border-top: 1px solid var(--line); }
 
-/* Pipeline stepper — now inline in the controls row */
+/* Pipeline stepper — inline pill between dropdown and buttons */
 .stepper {
   display: flex; align-items: center; justify-content: center;
-  gap: 0; padding: 8px 20px; flex: 1;
+  gap: 0; padding: 10px 24px; flex: 1;
   background: var(--panel2); border: 1px solid var(--line);
-  border-radius: 10px; min-width: 260px;
+  border-radius: 10px; min-width: 260px; align-self: stretch;
 }
 .step { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .step-dot {
