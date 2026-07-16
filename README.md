@@ -119,64 +119,71 @@ go build -o cx-guardian . && ./cx-guardian -addr :8081
 
 ## Architecture
 
+![CX Guardian architecture — Signal Sources → Tracker → DETECT · DIAGNOSE · HEAL engine → FSM-guarded levers, streamed live to the dashboard](architecture.svg)
+
+<details>
+<summary>Mermaid source (renders on GitHub)</summary>
+
 ```mermaid
 flowchart LR
-    subgraph IN["Input"]
-        SIM["Simulation\ninternal/sim"]
-        LIVE["Live ic-dev\nCloudWatch · read-only"]
-    end
-
-    subgraph CORE["CX Guardian Engine"]
+    subgraph SRC["① Signal Source"]
         direction TB
-        TRACKER["Tracker\nFSM state map"]
-        DETECTOR["Detector\nCascade seed · Dwell rules"]
-        DIAGNOSER["Diagnoser\nRule engine or Claude Opus 4.8"]
-        HEALER["Healer\nConfidence gate · Dry-run"]
-        ACTUATOR["Actuator\n4 FSM-guarded levers"]
-
-        TRACKER --> DETECTOR --> DIAGNOSER --> HEALER --> ACTUATOR
+        SIM["<b>Simulation</b><br/>internal/sim<br/>4 fixtures · mock DynamoDB"]
     end
 
-    subgraph OUT["Output"]
+    TRK["<b>Tracker</b><br/>tracker.go<br/>in-memory FSM state map"]
+
+    subgraph ENG["② CX Guardian Engine &nbsp;—&nbsp; internal/sentinel"]
+        direction LR
+        DET["<b>DETECT</b><br/>detector.go<br/>cascade-seed · dwell rules"]
+        DIA["<b>DIAGNOSE</b><br/>diagnoser.go<br/>Rule engine or Claude Opus 4.8"]
+        HEAL["<b>HEAL</b><br/>healer.go<br/>confidence gate 0.75 · dry-run"]
+        DET -->|Detection| DIA -->|Diagnosis| HEAL
+    end
+
+    subgraph LEV["③ FSM-Guarded Levers"]
+        direction TB
         L1["CASCADE_CIRCUIT_BREAK"]
         L2["REQUEUE_CONTACT"]
-        L3["TERMINATE_CONTACT"]
-        L4["SYNC_CONTACT_V2"]
+        L3["SYNC_CONTACT_V2"]
+        L4["TERMINATE_CONTACT"]
     end
 
-    subgraph UI["Web Dashboard"]
-        SSE["SSE Stream"]
-        BROWSER["Browser\nDetect → Diagnose → Heal"]
+    subgraph UI["④ Live Dashboard"]
+        direction TB
+        SSE["<b>main.go</b><br/>HTTP + SSE · go:embed"]
+        BROWSER["<b>Browser</b><br/>Detect → Diagnose → Heal"]
         SSE --> BROWSER
     end
 
-    SIM --> TRACKER
-    LIVE --> TRACKER
-    ACTUATOR --> L1 & L2 & L3 & L4
-    CORE --> SSE
+    SIM -->|events| TRK
+    TRK -->|state| DET
+    HEAL -->|action| L1 & L2 & L3 & L4
+    ENG -->|SSE stream| SSE
 
-    style IN fill:#111827,stroke:#374151,color:#9ca3af
-    style CORE fill:#111827,stroke:#374151,color:#9ca3af
-    style OUT fill:#111827,stroke:#374151,color:#9ca3af
-    style UI fill:#111827,stroke:#374151,color:#9ca3af
+    classDef src    fill:#dae8fc,stroke:#6c8ebf,stroke-width:1px,color:#12305e;
+    classDef ingest fill:#f5f5f5,stroke:#666666,stroke-width:1px,color:#222222;
+    classDef detect fill:#d5e8d4,stroke:#82b366,stroke-width:1px,color:#1e401e;
+    classDef diag   fill:#e1d5e7,stroke:#9673a6,stroke-width:1px,color:#3a2148;
+    classDef heal   fill:#ffe6cc,stroke:#d79b00,stroke-width:1px,color:#663d00;
+    classDef lever  fill:#fff2cc,stroke:#d6b656,stroke-width:1px,color:#5c4a00;
+    classDef ui     fill:#f8cecc,stroke:#b85450,stroke-width:1px,color:#5c1a18;
 
-    style SIM fill:#1e3a5f,stroke:#3b82f6,color:#bfdbfe
-    style LIVE fill:#1e3a5f,stroke:#3b82f6,color:#bfdbfe
+    class SIM src;
+    class TRK ingest;
+    class DET detect;
+    class DIA diag;
+    class HEAL heal;
+    class L1,L2,L3,L4 lever;
+    class SSE,BROWSER ui;
 
-    style TRACKER fill:#164e63,stroke:#22d3ee,color:#a5f3fc
-    style DETECTOR fill:#164e63,stroke:#22d3ee,color:#a5f3fc
-    style DIAGNOSER fill:#1e1b4b,stroke:#818cf8,color:#e0e7ff
-    style HEALER fill:#14532d,stroke:#4ade80,color:#bbf7d0
-    style ACTUATOR fill:#78350f,stroke:#fbbf24,color:#fef3c7
-
-    style L1 fill:#1c1917,stroke:#f43f5e,color:#fecdd3
-    style L2 fill:#1c1917,stroke:#f43f5e,color:#fecdd3
-    style L3 fill:#1c1917,stroke:#f43f5e,color:#fecdd3
-    style L4 fill:#1c1917,stroke:#f43f5e,color:#fecdd3
-
-    style SSE fill:#1e1b4b,stroke:#818cf8,color:#e0e7ff
-    style BROWSER fill:#1e1b4b,stroke:#818cf8,color:#e0e7ff
+    style SRC fill:#ffffff,stroke:#b0b7c3,stroke-width:1px,color:#33373d;
+    style ENG fill:#ffffff,stroke:#9673a6,stroke-width:1.5px,color:#33373d;
+    style LEV fill:#ffffff,stroke:#b0b7c3,stroke-width:1px,color:#33373d;
+    style UI  fill:#ffffff,stroke:#b0b7c3,stroke-width:1px,color:#33373d;
 ```
+
+</details>
 
 ### How the Phases Work
 

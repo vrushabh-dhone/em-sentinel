@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1480 600" width="1480" height="600" font-family="'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="12" markerHeight="12" refX="8.5" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L9,4 L0,8 z" fill="#7a8290"/>
+    </marker>
+    <style>
+      .lane   { fill:#ffffff; stroke:#b0b7c3; stroke-width:1; rx:6; }
+      .lane-t { font-size:13px; font-weight:700; fill:#404650; letter-spacing:.4px; }
+      .bt     { font-size:14px; font-weight:700; }
+      .bf     { font-size:10.5px; font-style:italic; }
+      .bd     { font-size:11px; }
+      .lv     { font-size:11.5px; font-weight:600; }
+      .edge   { stroke:#8a93a3; stroke-width:1.5; fill:none; }
+      .elbl   { font-size:10.5px; fill:#5b6472; }
+      .elbl-bg{ fill:#ffffff; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1480" height="600" fill="#ffffff"/>
+
+  <!-- =============== CONNECTORS (under boxes) =============== -->
+  <!-- SIM -> TRK -->
+  <path class="edge" d="M272,240 H345" marker-end="url(#arr)"/>
+  <!-- TRK -> DET -->
+  <path class="edge" d="M535,240 H570 V210 H606" marker-end="url(#arr)"/>
+  <!-- DET -> DIA -->
+  <path class="edge" d="M771,210 H791" marker-end="url(#arr)"/>
+  <!-- DIA -> HEAL -->
+  <path class="edge" d="M976,210 H996" marker-end="url(#arr)"/>
+  <!-- HEAL -> levers (fan) -->
+  <path class="edge" d="M1156,210 H1185 V139 H1215" marker-end="url(#arr)"/>
+  <path class="edge" d="M1156,210 H1185 V199 H1215" marker-end="url(#arr)"/>
+  <path class="edge" d="M1156,210 H1185 V259 H1215" marker-end="url(#arr)"/>
+  <path class="edge" d="M1156,210 H1185 V319 H1215" marker-end="url(#arr)"/>
+  <!-- ENG -> SSE -->
+  <path class="edge" d="M880,320 V400 H755 V425" marker-end="url(#arr)"/>
+  <!-- SSE -> BROWSER -->
+  <path class="edge" d="M860,477 H900" marker-end="url(#arr)"/>
+
+  <!-- =============== ① SIGNAL SOURCE =============== -->
+  <rect class="lane" x="40" y="145" width="250" height="170"/>
+  <text class="lane-t" x="56" y="171">① Signal Source</text>
+
+  <rect x="58" y="181" width="214" height="118" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+  <g fill="#12305e" text-anchor="middle">
+    <text class="bt" x="165" y="209">Simulation</text>
+    <text class="bf" x="165" y="227">internal/sim</text>
+    <text class="bd" x="165" y="249">4 fixtures</text>
+    <text class="bd" x="165" y="266">mock DynamoDB + failure-queue</text>
+    <text class="bd" x="165" y="283">offline · zero deps</text>
+  </g>
+
+  <!-- =============== TRACKER (ingest) =============== -->
+  <rect x="345" y="185" width="190" height="110" rx="6" fill="#f5f5f5" stroke="#666666"/>
+  <g fill="#222222" text-anchor="middle">
+    <text class="bt" x="440" y="216">Tracker</text>
+    <text class="bf" x="440" y="234">tracker.go</text>
+    <text class="bd" x="440" y="256">in-memory FSM state map</text>
+    <text class="bd" x="440" y="273">contacts{} · agents{}</text>
+  </g>
+
+  <!-- =============== ② ENGINE =============== -->
+  <rect class="lane" x="590" y="90" width="580" height="230" stroke="#9673a6" stroke-width="1.5"/>
+  <text class="lane-t" x="606" y="116" fill="#5a3f6e">② CX Guardian Engine — internal/sentinel</text>
+
+  <!-- DETECT -->
+  <rect x="606" y="155" width="165" height="110" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+  <g fill="#1e401e" text-anchor="middle">
+    <text class="bt" x="688" y="184">DETECT</text>
+    <text class="bf" x="688" y="202">detector.go</text>
+    <text class="bd" x="688" y="223">cascade-seed</text>
+    <text class="bd" x="688" y="240">dwell rules · 60/300s</text>
+  </g>
+
+  <!-- DIAGNOSE -->
+  <rect x="791" y="155" width="185" height="110" rx="6" fill="#e1d5e7" stroke="#9673a6"/>
+  <g fill="#3a2148" text-anchor="middle">
+    <text class="bt" x="883" y="184">DIAGNOSE</text>
+    <text class="bf" x="883" y="202">diagnoser.go</text>
+    <text class="bd" x="883" y="223">Rule engine or</text>
+    <text class="bd" x="883" y="240">Claude Opus 4.8</text>
+  </g>
+
+  <!-- HEAL -->
+  <rect x="996" y="155" width="160" height="110" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+  <g fill="#663d00" text-anchor="middle">
+    <text class="bt" x="1076" y="184">HEAL</text>
+    <text class="bf" x="1076" y="202">healer.go</text>
+    <text class="bd" x="1076" y="223">confidence gate 0.75</text>
+    <text class="bd" x="1076" y="240">dry-run</text>
+  </g>
+
+  <!-- =============== ③ LEVERS =============== -->
+  <rect class="lane" x="1200" y="70" width="250" height="290"/>
+  <text class="lane-t" x="1216" y="96">③ FSM-Guarded Levers</text>
+
+  <rect x="1216" y="115" width="220" height="48" rx="6" fill="#fff2cc" stroke="#d6b656"/>
+  <text class="lv" x="1326" y="144" fill="#5c4a00" text-anchor="middle">CASCADE_CIRCUIT_BREAK</text>
+  <rect x="1216" y="175" width="220" height="48" rx="6" fill="#fff2cc" stroke="#d6b656"/>
+  <text class="lv" x="1326" y="204" fill="#5c4a00" text-anchor="middle">REQUEUE_CONTACT</text>
+  <rect x="1216" y="235" width="220" height="48" rx="6" fill="#fff2cc" stroke="#d6b656"/>
+  <text class="lv" x="1326" y="264" fill="#5c4a00" text-anchor="middle">SYNC_CONTACT_V2</text>
+  <rect x="1216" y="295" width="220" height="48" rx="6" fill="#fff2cc" stroke="#d6b656"/>
+  <text class="lv" x="1326" y="324" fill="#5c4a00" text-anchor="middle">TERMINATE_CONTACT</text>
+
+  <!-- =============== ④ DASHBOARD =============== -->
+  <rect class="lane" x="590" y="380" width="560" height="180"/>
+  <text class="lane-t" x="606" y="406">④ Live Dashboard</text>
+
+  <rect x="650" y="425" width="210" height="105" rx="6" fill="#f8cecc" stroke="#b85450"/>
+  <g fill="#5c1a18" text-anchor="middle">
+    <text class="bt" x="755" y="456">main.go</text>
+    <text class="bf" x="755" y="474">HTTP + SSE · go:embed</text>
+    <text class="bd" x="755" y="496">/api/run · /api/live</text>
+    <text class="bd" x="755" y="513">scene · log · diagnosis</text>
+  </g>
+
+  <rect x="900" y="425" width="210" height="105" rx="6" fill="#f8cecc" stroke="#b85450"/>
+  <g fill="#5c1a18" text-anchor="middle">
+    <text class="bt" x="1005" y="456">Browser</text>
+    <text class="bf" x="1005" y="474">embedded web/ dashboard</text>
+    <text class="bd" x="1005" y="496">Detect → Diagnose → Heal</text>
+    <text class="bd" x="1005" y="513">agent floor · confidence</text>
+  </g>
+
+  <!-- =============== EDGE LABELS (top layer) =============== -->
+  <g text-anchor="middle">
+    <rect class="elbl-bg" x="286" y="225" width="44" height="14"/><text class="elbl" x="308" y="235">events</text>
+    <rect class="elbl-bg" x="561" y="192" width="34" height="14"/><text class="elbl" x="578" y="202">state</text>
+    <rect class="elbl-bg" x="748" y="188" width="66" height="14"/><text class="elbl" x="781" y="198">Detection</text>
+    <rect class="elbl-bg" x="953" y="188" width="66" height="14"/><text class="elbl" x="986" y="198">Diagnosis</text>
+    <rect class="elbl-bg" x="1163" y="166" width="44" height="14"/><text class="elbl" x="1185" y="176">action</text>
+    <rect class="elbl-bg" x="780" y="366" width="72" height="14"/><text class="elbl" x="816" y="376">SSE stream</text>
+  </g>
+</svg>
