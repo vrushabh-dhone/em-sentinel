@@ -120,61 +120,62 @@ go build -o cx-guardian . && ./cx-guardian -addr :8081
 ## Architecture
 
 ```mermaid
-flowchart TD
-    subgraph SOURCES["📡 Event Sources"]
-        SIM["🧪 Simulation\ninternal/sim\n(in-memory)"]
-        LIVE["☁️ Live ic-dev\nCloudWatch Logs\nread-only"]
+flowchart LR
+    subgraph IN["Input"]
+        SIM["Simulation\ninternal/sim"]
+        LIVE["Live ic-dev\nCloudWatch · read-only"]
     end
 
-    subgraph ENGINE["⚙️ CX Guardian Engine  (internal/sentinel)"]
+    subgraph CORE["CX Guardian Engine"]
         direction TB
-        TRACKER["🗂️ Tracker\nFSM state map\nContactStateChange events"]
-        DETECTOR["🔍 Detector\nCascade seed · Dwell rules\nblast-radius calc"]
-        DIAGNOSER["🧠 Diagnoser\nRuleDiagnoser offline\nor Claude Opus 4.8"]
-        HEALER["🛡️ Healer\nConfidence gate ≥ 0.75\nDry-run in live mode"]
-        ACTUATOR["⚡ Actuator\nFSM-guarded levers\n4 safe actions"]
+        TRACKER["Tracker\nFSM state map"]
+        DETECTOR["Detector\nCascade seed · Dwell rules"]
+        DIAGNOSER["Diagnoser\nRule engine or Claude Opus 4.8"]
+        HEALER["Healer\nConfidence gate · Dry-run"]
+        ACTUATOR["Actuator\n4 FSM-guarded levers"]
 
-        TRACKER -->|"Detection fired"| DETECTOR
-        DETECTOR -->|"Detection + context"| DIAGNOSER
-        DIAGNOSER -->|"Diagnosis + confidence"| HEALER
-        HEALER -->|"Action approved"| ACTUATOR
+        TRACKER --> DETECTOR --> DIAGNOSER --> HEALER --> ACTUATOR
     end
 
-    subgraph LEVERS["🔧 Healing Levers"]
-        L1["CASCADE_CIRCUIT_BREAK\nQuarantine seed only"]
-        L2["REQUEUE_CONTACT\nRe-enter matching"]
-        L3["TERMINATE_CONTACT\nRelease ACW block"]
-        L4["SYNC_CONTACT_V2\nRe-trigger FindMatch"]
+    subgraph OUT["Output"]
+        L1["CASCADE_CIRCUIT_BREAK"]
+        L2["REQUEUE_CONTACT"]
+        L3["TERMINATE_CONTACT"]
+        L4["SYNC_CONTACT_V2"]
     end
 
-    subgraph DASHBOARD["🖥️ Web Dashboard  (web/)"]
-        SSE["SSE Stream\n/api/run · /api/live"]
-        UI["Browser UI\nDetect→Diagnose→Heal\nstepper + floor tiles"]
-        SSE --> UI
+    subgraph UI["Web Dashboard"]
+        SSE["SSE Stream"]
+        BROWSER["Browser\nDetect → Diagnose → Heal"]
+        SSE --> BROWSER
     end
 
-    SIM -->|"ContactStateChange\nFailureRecord"| TRACKER
-    LIVE -->|"FilterLogEvents\nagent wipe signals"| TRACKER
+    SIM --> TRACKER
+    LIVE --> TRACKER
     ACTUATOR --> L1 & L2 & L3 & L4
-    ENGINE -->|"scene · log · diagnosis\nresult · summary events"| SSE
+    CORE --> SSE
 
-    style SOURCES fill:#1a2744,stroke:#3b82f6,color:#93c5fd
-    style ENGINE fill:#0f2b27,stroke:#2dd4bf,color:#a7f3ec
-    style LEVERS fill:#1c0f18,stroke:#f43f5e,color:#fecdd3
-    style DASHBOARD fill:#1a1a2e,stroke:#6366f1,color:#c7d2fe
-    style TRACKER fill:#0c2a30,stroke:#22d3ee,color:#a5f3fc
-    style DETECTOR fill:#0c2a30,stroke:#22d3ee,color:#a5f3fc
-    style DIAGNOSER fill:#1e1b4b,stroke:#818cf8,color:#c7d2fe
-    style HEALER fill:#14463f,stroke:#34d399,color:#a7f3ec
-    style ACTUATOR fill:#422006,stroke:#f59e0b,color:#fde68a
-    style L1 fill:#2a141c,stroke:#f43f5e,color:#fecdd3
-    style L2 fill:#2a141c,stroke:#f43f5e,color:#fecdd3
-    style L3 fill:#2a141c,stroke:#f43f5e,color:#fecdd3
-    style L4 fill:#2a141c,stroke:#f43f5e,color:#fecdd3
-    style SSE fill:#1e1b4b,stroke:#6366f1,color:#c7d2fe
-    style UI fill:#1e1b4b,stroke:#6366f1,color:#c7d2fe
-    style SIM fill:#1a2744,stroke:#3b82f6,color:#93c5fd
-    style LIVE fill:#1a2744,stroke:#3b82f6,color:#93c5fd
+    style IN fill:#111827,stroke:#374151,color:#9ca3af
+    style CORE fill:#111827,stroke:#374151,color:#9ca3af
+    style OUT fill:#111827,stroke:#374151,color:#9ca3af
+    style UI fill:#111827,stroke:#374151,color:#9ca3af
+
+    style SIM fill:#1e3a5f,stroke:#3b82f6,color:#bfdbfe
+    style LIVE fill:#1e3a5f,stroke:#3b82f6,color:#bfdbfe
+
+    style TRACKER fill:#164e63,stroke:#22d3ee,color:#a5f3fc
+    style DETECTOR fill:#164e63,stroke:#22d3ee,color:#a5f3fc
+    style DIAGNOSER fill:#1e1b4b,stroke:#818cf8,color:#e0e7ff
+    style HEALER fill:#14532d,stroke:#4ade80,color:#bbf7d0
+    style ACTUATOR fill:#78350f,stroke:#fbbf24,color:#fef3c7
+
+    style L1 fill:#1c1917,stroke:#f43f5e,color:#fecdd3
+    style L2 fill:#1c1917,stroke:#f43f5e,color:#fecdd3
+    style L3 fill:#1c1917,stroke:#f43f5e,color:#fecdd3
+    style L4 fill:#1c1917,stroke:#f43f5e,color:#fecdd3
+
+    style SSE fill:#1e1b4b,stroke:#818cf8,color:#e0e7ff
+    style BROWSER fill:#1e1b4b,stroke:#818cf8,color:#e0e7ff
 ```
 
 ### How the Phases Work
