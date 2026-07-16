@@ -8,7 +8,7 @@
 //   - AgentContactState    <-> cxone.Common.UnifiedAgentContactState
 //   - ContactStateChange   <-> ContactStateChangeV2 (orch-entity-event-contracts)
 //   - AgentContactChange   <-> AgentContactStateChangeV2
-package sentinel
+package engine
 
 import "time"
 

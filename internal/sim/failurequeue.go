@@ -3,27 +3,27 @@ package sim
 import (
 	"fmt"
 
-	"github.com/nice-cxone/em-sentinel/internal/sentinel"
+	"github.com/vrushabh-dhone/cx-guardian/internal/engine"
 )
 
 // FailureQueue mimics orch-entity-failure-queue's record processor. It implements
-// sentinel.Actuator so the Healer can drive it.
+// engine.Actuator so the Healer can drive it.
 //
 // Real-code references:
 //   - whole-agent cleanup:  recordprocessor.go:54-91 + entityoperations.go:61-99
 //   - "Agent record ttl set" log marker: entityoperations.go:76
 type FailureQueue struct {
 	store   *Store
-	tracker *sentinel.Tracker
+	tracker *engine.Tracker
 }
 
-func NewFailureQueue(store *Store, tracker *sentinel.Tracker) *FailureQueue {
+func NewFailureQueue(store *Store, tracker *engine.Tracker) *FailureQueue {
 	return &FailureQueue{store: store, tracker: tracker}
 }
 
 // WholeAgentCleanup is the CURRENT, dangerous default: expire the agent record and every
 // contact it is handling. This is what produces the 5-7x cascade amplification.
-func (fq *FailureQueue) WholeAgentCleanup(seedContact int64, agentNo int32) sentinel.HealResult {
+func (fq *FailureQueue) WholeAgentCleanup(seedContact int64, agentNo int32) engine.HealResult {
 	related := fq.tracker.HealthyContactsForAgent(agentNo, seedContact)
 
 	// Ordered expiry: related contacts first, then the agent (matches persistencechannelprocessor).
@@ -35,7 +35,7 @@ func (fq *FailureQueue) WholeAgentCleanup(seedContact int64, agentNo int32) sent
 	}
 	fq.store.SetTTL(KindAgent, int64(agentNo)) // "Agent record ttl set"
 
-	return sentinel.HealResult{
+	return engine.HealResult{
 		Action:         "WHOLE_AGENT_CLEANUP",
 		Quarantined:    wiped,
 		Preserved:      nil,
@@ -47,12 +47,12 @@ func (fq *FailureQueue) WholeAgentCleanup(seedContact int64, agentNo int32) sent
 
 // CascadeCircuitBreak is Sentinel's fix: contact-only quarantine. Expire just the seed,
 // preserve the agent record and every healthy contact.
-func (fq *FailureQueue) CascadeCircuitBreak(seedContact int64, agentNo int32) sentinel.HealResult {
+func (fq *FailureQueue) CascadeCircuitBreak(seedContact int64, agentNo int32) engine.HealResult {
 	preserved := fq.tracker.HealthyContactsForAgent(agentNo, seedContact)
 	fq.store.SetTTL(KindContact, seedContact) // only the genuinely-bad contact
 
-	return sentinel.HealResult{
-		Action:         sentinel.ActionCascadeCircuitBreak,
+	return engine.HealResult{
+		Action:         engine.ActionCascadeCircuitBreak,
 		Quarantined:    []int64{seedContact},
 		Preserved:      preserved,
 		AgentPreserved: true,
@@ -61,18 +61,18 @@ func (fq *FailureQueue) CascadeCircuitBreak(seedContact int64, agentNo int32) se
 	}
 }
 
-func (fq *FailureQueue) Requeue(contactNo int64) sentinel.HealResult {
+func (fq *FailureQueue) Requeue(contactNo int64) engine.HealResult {
 	// Reflect recovery in the store: the stuck contact re-enters matching.
 	fq.store.SetState(KindContact, contactNo, "QUEUING", true)
-	return sentinel.HealResult{Action: sentinel.ActionRequeue, Preserved: []int64{contactNo}, Message: fmt.Sprintf("produced RequeueContact for %d (ROUTING->QUEUING) — contact recovered", contactNo)}
+	return engine.HealResult{Action: engine.ActionRequeue, Preserved: []int64{contactNo}, Message: fmt.Sprintf("produced RequeueContact for %d (ROUTING->QUEUING) — contact recovered", contactNo)}
 }
 
-func (fq *FailureQueue) Sync(contactNo int64) sentinel.HealResult {
+func (fq *FailureQueue) Sync(contactNo int64) engine.HealResult {
 	fq.store.SetState(KindContact, contactNo, "REFINING", true)
-	return sentinel.HealResult{Action: sentinel.ActionSync, Preserved: []int64{contactNo}, Message: fmt.Sprintf("produced SyncContactV2 for %d — re-synced from DynamoDB, re-entered matching", contactNo)}
+	return engine.HealResult{Action: engine.ActionSync, Preserved: []int64{contactNo}, Message: fmt.Sprintf("produced SyncContactV2 for %d — re-synced from DynamoDB, re-entered matching", contactNo)}
 }
 
-func (fq *FailureQueue) Terminate(contactNo int64) sentinel.HealResult {
+func (fq *FailureQueue) Terminate(contactNo int64) engine.HealResult {
 	fq.store.SetState(KindContact, contactNo, "ENDED", true)
-	return sentinel.HealResult{Action: sentinel.ActionTerminate, Preserved: []int64{contactNo}, Message: fmt.Sprintf("produced TerminateContact for %d — contact released, agent freed", contactNo)}
+	return engine.HealResult{Action: engine.ActionTerminate, Preserved: []int64{contactNo}, Message: fmt.Sprintf("produced TerminateContact for %d — contact released, agent freed", contactNo)}
 }

@@ -14,8 +14,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/nice-cxone/em-sentinel/internal/sentinel"
-	"github.com/nice-cxone/em-sentinel/internal/sim"
+	"github.com/vrushabh-dhone/cx-guardian/internal/engine"
+	"github.com/vrushabh-dhone/cx-guardian/internal/sim"
 )
 
 //go:embed web/*
@@ -23,7 +23,7 @@ var webFS embed.FS
 
 // diagnoser is selected once at startup: Claude if a key is present, else the rule engine.
 var (
-	diagnoser   sentinel.Diagnoser
+	diagnoser   engine.Diagnoser
 	diagEngine  string
 )
 
@@ -31,10 +31,10 @@ func main() {
 	addr := flag.String("addr", ":8080", "listen address")
 	flag.Parse()
 
-	if cd := sentinel.NewClaudeDiagnoser(); cd != nil {
+	if cd := engine.NewClaudeDiagnoser(); cd != nil {
 		diagnoser, diagEngine = cd, "claude (opus-4-8)"
 	} else {
-		diagnoser, diagEngine = sentinel.NewRuleDiagnoser(), "rules (offline)"
+		diagnoser, diagEngine = engine.NewRuleDiagnoser(), "rules (offline)"
 	}
 
 	sub, err := fs.Sub(webFS, "web")
@@ -96,7 +96,7 @@ func makeStep(fast bool) func() {
 }
 
 // emitDiagnosis runs the selected diagnoser and streams the result, tagging which engine ran.
-func emitDiagnosis(w http.ResponseWriter, fl http.Flusher, det sentinel.Detection) sentinel.Diagnosis {
+func emitDiagnosis(w http.ResponseWriter, fl http.Flusher, det engine.Detection) engine.Diagnosis {
 	diag := diagnoser.Diagnose(det)
 	sse(w, fl, "diagnosis", map[string]any{
 		"engine":      diagEngine,
@@ -121,10 +121,10 @@ func runCascade(w http.ResponseWriter, fl http.Flusher, sentinelOn bool, step fu
 		sc.SeedContact, sc.AgentNo, sc.Seed.Reason)))
 	step()
 
-	var result sentinel.HealResult
+	var result engine.HealResult
 	if sentinelOn {
-		det := sentinel.NewDetector(tracker)
-		healer := sentinel.NewHealer(fq)
+		det := engine.NewDetector(tracker)
+		healer := engine.NewHealer(fq)
 		if detection, fired := det.InspectFailure(sc.Seed); fired {
 			sse(w, fl, "log", logLine("DETECT", fmt.Sprintf(
 				"⚡ CASCADE SEED DETECTED [%s] — %d healthy contact(s) at risk: %v",
@@ -188,8 +188,8 @@ func runStuck(w http.ResponseWriter, fl http.Flusher, sentinelOn bool, step func
 
 	recovered := false
 	if sentinelOn {
-		det := sentinel.NewDetector(tracker)
-		healer := sentinel.NewHealer(fq)
+		det := engine.NewDetector(tracker)
+		healer := engine.NewHealer(fq)
 		dets := det.InspectDwell(now)
 		if len(dets) > 0 {
 			detection := dets[0]
@@ -239,7 +239,7 @@ func runStuck(w http.ResponseWriter, fl http.Flusher, sentinelOn bool, step func
 func runSingleContact(w http.ResponseWriter, fl http.Flusher, sentinelOn bool, step func(),
 	store *sim.Store, fq *sim.FailureQueue, agentNo int32,
 	failureMsg, detectMsg, offMsg, badVerdict, goodVerdict string,
-	det sentinel.Detection, stats func(recovered bool) []map[string]any) {
+	det engine.Detection, stats func(recovered bool) []map[string]any) {
 
 	sse(w, fl, "scene", scene(sentinelOn, agentNo, store))
 	step()
@@ -248,7 +248,7 @@ func runSingleContact(w http.ResponseWriter, fl http.Flusher, sentinelOn bool, s
 
 	recovered := false
 	if sentinelOn {
-		healer := sentinel.NewHealer(fq)
+		healer := engine.NewHealer(fq)
 		sse(w, fl, "log", logLine("DETECT", detectMsg))
 		step()
 		diag := emitDiagnosis(w, fl, det)
@@ -273,8 +273,8 @@ func runSingleContact(w http.ResponseWriter, fl http.Flusher, sentinelOn bool, s
 func runACW(w http.ResponseWriter, fl http.Flusher, sentinelOn bool, step func()) {
 	store, tracker, sc := sim.ACWFixture()
 	fq := sim.NewFailureQueue(store, tracker)
-	det := sentinel.Detection{
-		Signal: "acw-stuck", Severity: sentinel.SevWarn, ContactNo: sc.SeedContact, AgentNo: sc.AgentNo,
+	det := engine.Detection{
+		Signal: "acw-stuck", Severity: engine.SevWarn, ContactNo: sc.SeedContact, AgentNo: sc.AgentNo,
 		Summary: "Agent contact stuck in AFTER_CONTACT_WORK past the ACW timeout.",
 	}
 	stats := func(recovered bool) []map[string]any {
@@ -301,8 +301,8 @@ func runACW(w http.ResponseWriter, fl http.Flusher, sentinelOn bool, step func()
 func runQueue(w http.ResponseWriter, fl http.Flusher, sentinelOn bool, step func()) {
 	store, tracker, sc := sim.QueueFixture()
 	fq := sim.NewFailureQueue(store, tracker)
-	det := sentinel.Detection{
-		Signal: "stuck-in-queuing", Severity: sentinel.SevWarn, ContactNo: sc.SeedContact, AgentNo: sc.AgentNo,
+	det := engine.Detection{
+		Signal: "stuck-in-queuing", Severity: engine.SevWarn, ContactNo: sc.SeedContact, AgentNo: sc.AgentNo,
 		Summary: "Contact stuck in QUEUING past the match SLA while agents are available.",
 	}
 	stats := func(recovered bool) []map[string]any {

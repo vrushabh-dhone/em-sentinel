@@ -111,7 +111,7 @@ flowchart LR
 
     TRK["<b>Tracker</b><br/>tracker.go<br/>in-memory FSM state map"]
 
-    subgraph ENG["② CX Guardian Engine &nbsp;—&nbsp; internal/sentinel"]
+    subgraph ENG["② CX Guardian Engine &nbsp;—&nbsp; internal/engine"]
         direction LR
         DET["<b>DETECT</b><br/>detector.go<br/>cascade-seed · dwell rules"]
         DIA["<b>DIAGNOSE</b><br/>diagnoser.go<br/>Rule engine or Claude Opus 4.8"]
@@ -194,7 +194,7 @@ A confidence gate (`AutoBelow = 0.75`) holds actions below 75% confidence for hu
 ```
 cx-guardian/
 ├── main.go                        # HTTP server, SSE streaming, scenario orchestration
-├── go.mod                         # Go module (github.com/nice-cxone/em-sentinel)
+├── go.mod                         # Go module (github.com/vrushabh-dhone/cx-guardian)
 │
 ├── web/                           # Embedded dashboard — rebuild required after any change here
 │   ├── index.html                 # Page structure: controls, stepper, floor, diagnosis, feed
@@ -221,7 +221,7 @@ cx-guardian/
 ## Key Technical Decisions
 
 ### Why Go?
-The entire EM platform is Go (Uber fx, franz-go Kafka, gRPC). CX Guardian is built to be a natural extension — the `internal/sentinel` engine is designed to be dropped into any EM service with minimal wiring.
+The entire EM platform is Go (Uber fx, franz-go Kafka, gRPC). CX Guardian is built to be a natural extension — the `internal/engine` engine is designed to be dropped into any EM service with minimal wiring.
 
 ### Why `//go:embed`?
 Single binary deployment. The dashboard is baked into the binary at build time so there are no static file paths to manage, no CDN, no separate web server. `go run .` gives you a fully working demo.

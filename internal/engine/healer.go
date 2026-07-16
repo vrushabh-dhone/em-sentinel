@@ -1,4 +1,4 @@
-package sentinel
+package engine
 
 // HealResult records what a healing action actually did, for the audit feed / UI.
 type HealResult struct {

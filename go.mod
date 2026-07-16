@@ -1,4 +1,4 @@
-module github.com/nice-cxone/em-sentinel
+module github.com/vrushabh-dhone/cx-guardian
 
 go 1.26
 
