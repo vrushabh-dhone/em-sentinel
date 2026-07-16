@@ -47,7 +47,7 @@ body {
 }
 /* scenario-pick no longer exists — dropdowns sit directly in controls-row */
 .tabs { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
-.dd { display: flex; align-items: center; gap: 8px; background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 3px 8px; }
+.dd { display: flex; align-items: center; gap: 8px; background: var(--bg2); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; }
 .dd.live { border-color: #4a1e2a; display: none; }
 .dd-cap { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim); white-space: nowrap; }
 .dd.live .dd-cap { color: var(--red); }
@@ -55,7 +55,7 @@ body {
 .scenario-pick-label { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim); }
 .scenario-select {
   background: var(--panel2); color: var(--text); border: 1px solid var(--line);
-  border-radius: 8px; padding: 5px 28px 5px 12px; font-size: 13px; font-weight: 600;
+  border-radius: 4px; padding: 4px 28px 4px 12px; font-size: 13px; font-weight: 600;
   cursor: pointer; min-width: 200px;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%238a97b1' stroke-width='1.6'/%3E%3C/svg%3E");
@@ -121,7 +121,7 @@ body {
 .buttons { display: flex; gap: 12px; align-items: stretch; }
 .btn {
   border: 1px solid var(--line); background: var(--panel2); color: var(--text);
-  padding: 0 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
+  padding: 5px 14px; border-radius: 6px; font-size: 13px; font-weight: 600;
   cursor: pointer; transition: transform .08s ease, box-shadow .2s ease, opacity .2s;
 }
 .btn:hover { transform: translateY(-1px); }
