@@ -234,7 +234,7 @@ body {
 
 /* Pipeline stepper — no border/background, blends into the page */
 .stepper {
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: flex-start; justify-content: center;
   gap: 0; padding: 4px 24px; flex: 1;
   min-width: 260px;
 }
@@ -250,7 +250,7 @@ body {
 }
 .step-line {
   flex: 1; height: 2px; background: var(--line); min-width: 80px; max-width: 160px;
-  transition: background .4s ease; margin-bottom: 0;
+  transition: background .4s ease; margin-top: 13px;
 }
 .step.active .step-dot  { border-color: var(--cyan); background: var(--cyan); box-shadow: 0 0 0 4px rgba(34,211,238,.2); }
 .step.active .step-label { color: var(--cyan); }
