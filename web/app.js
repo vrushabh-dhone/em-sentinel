@@ -9,10 +9,6 @@
     stuck: "<strong>Scenario:</strong> Agent #50; contact #2001 is stuck in <code>ROUTING</code> past the ring timeout.",
     acw: "<strong>Scenario:</strong> Agent #60; contact #3001 stuck in <code>AFTER_CONTACT_WORK</code> past the ACW timeout — agent blocked.",
     queue: "<strong>Scenario:</strong> Contact #4001 stuck in <code>QUEUING</code> past the match SLA while agent #70 is available.",
-    "live-cascade": "<strong>Live (ic-dev):</strong> <code>orch-entity-failure-queue</code> (CloudWatch) cascade bursts + real victims (Loki) — read-only, dry-run.",
-    "live-stuck": "<strong>Live (ic-dev):</strong> contacts stuck in <code>ROUTING</code> past the ring timeout — real <code>ContactStateChangeV2</code> dwell (mon-na1 Loki).",
-    "live-acw": "<strong>Live (ic-dev):</strong> agent contacts stuck in <code>AFTER_CONTACT_WORK</code> — real <code>AgentContactStateChangeV2</code> dwell (mon-na1 Loki).",
-    "live-queue": "<strong>Live (ic-dev):</strong> contacts stuck in <code>QUEUING</code> past the match SLA — real <code>ContactStateChangeV2</code> dwell (mon-na1 Loki).",
   };
 
   const USECASES = {
@@ -37,15 +33,6 @@
       fix: "CX Guardian detects QUEUING past the match SLA, diagnoses a stalled FindMatch cycle, and issues SYNC_CONTACT_V2 — this re-triggers the contact in the matching pipeline so an available agent can be matched within ~1s.",
     },
   };
-  // signal + default scan window per live option
-  const LIVE = {
-    "live-cascade": { signal: "cascade", scan: "24h" },
-    "live-stuck": { signal: "stuck", scan: "2h" },
-    "live-acw": { signal: "acw", scan: "2h" },
-    "live-queue": { signal: "queue", scan: "2h" },
-  };
-  let liveES = null, liveName = "live-cascade";
-
   function setButtons(disabled) { btnOn.disabled = disabled; btnOff.disabled = disabled; }
 
   // ── Stepper helpers ──────────────────────────────────────────────────────────
@@ -153,7 +140,7 @@
 
   function addLog(d) {
     // Advance stepper based on tag (only for CX Guardian ON path)
-    if (d.tag === "DETECT" || d.tag === "CWLOGS" || d.tag === "LOKI") {
+    if (d.tag === "DETECT") {
       stepDone("step-detect", "step-line-1");
       stepActivate("step-diagnose");
     } else if (d.tag === "HEAL") {
@@ -247,71 +234,8 @@
     es.onerror = () => { setButtons(false); if (es) es.close(); };
   }
 
-  function showStatus(d) {
-    const v = $("verdict");
-    v.classList.remove("hidden");
-    const cls = d.state === "error" || d.state === "not-configured" ? "bad" : "good";
-    v.className = "verdict " + cls;
-    v.textContent = (d.state === "connected" ? "● " : "") + d.text;
-    if (d.engine) $("diag-engine").textContent = d.engine;
-  }
-
-  let liveClosing = false, liveOnce = false;
-  function disconnectLive() {
-    if (liveES) { liveClosing = true; liveES.close(); liveES = null; }
-  }
-
-  // opts: { lookback, once, signal }. once=Scan (single poll), !once=Watch (continuous 30s).
-  function connectLive(opts) {
-    disconnectLive();
-    liveClosing = false;
-    liveOnce = !!opts.once;
-    // Refresh the right panel so only THIS action's output shows (no carry-over).
-    $("feed").innerHTML = "";
-    $("diag-body").classList.add("hidden");
-    $("diag-empty").classList.remove("hidden");
-    $("verdict").classList.add("hidden");
-    stepReset();
-    stepActivate("step-detect");
-    $("mode-pill").textContent = opts.once ? "SCAN" : "● LIVE";
-    $("mode-pill").className = "pill pill-on";
-    showStatus({ state: "connecting", text: "Connecting to ic-dev…" });
-    const q = new URLSearchParams();
-    if (opts.lookback) q.set("lookback", opts.lookback);
-    if (opts.signal) q.set("signal", opts.signal);
-    if (opts.once) q.set("once", "1");
-    liveES = new EventSource("/api/live?" + q.toString());
-    liveES.addEventListener("status", (e) => showStatus(JSON.parse(e.data)));
-    liveES.addEventListener("log", (e) => addLog(JSON.parse(e.data)));
-    liveES.addEventListener("diagnosis", (e) => showDiagnosis(JSON.parse(e.data)));
-    liveES.addEventListener("detection", (e) => {
-      const d = JSON.parse(e.data);
-      if (d.healthy) {
-        addLog({ ts: "", tag: "OK", msg: `healthy — nothing detected in window` });
-        stepDone("step-detect", "step-line-1");
-        stepDone("step-diagnose", "step-line-2");
-        stepDone("step-heal", null, "done");
-      } else {
-        addLog({ ts: "", tag: "DETECT", msg: `${d.total} detected → WOULD ${d.action}` });
-        stepDone("step-detect", "step-line-1");
-        stepDone("step-diagnose", "step-line-2");
-        stepDone("step-heal", null, "healed");
-      }
-      // Scan mode: server closes after this detection; mark intentional so the imminent
-      // onerror isn't shown as a failure (also used for headless screenshots).
-      if (liveOnce) { liveClosing = true; setTimeout(disconnectLive, 250); }
-    });
-    liveES.onerror = () => { if (!liveClosing) showStatus({ state: "error", text: "Live stream disconnected." }); };
-  }
-
-  function startLive(once) {
-    const cfg = LIVE[liveName] || LIVE["live-cascade"];
-    connectLive({ signal: cfg.signal, lookback: once ? cfg.scan : "15m", once });
-  }
-
   function pickScenario(name) {
     scenario = name;
-    disconnectLive();
     $("scenario-label").innerHTML = LABELS[name];
     const uc = USECASES[name];
     const card = $("usecase-card");
@@ -323,29 +247,18 @@
     } else {
       card.classList.add("hidden");
     }
-    const live = name.startsWith("live-");
-    if (live) liveName = name;
-    // Mutually exclusive dropdowns: the active group shows the choice, the other resets.
-    $("sim-select").value = live ? "" : name;
-    $("live-select").value = live ? name : "";
-    document.querySelector(".buttons").style.display = live ? "none" : "flex";
-    $("live-controls").style.display = live ? "flex" : "none";
+    $("sim-select").value = name;
     reset("idle");
     $("mode-pill").textContent = "idle";
     $("mode-pill").className = "pill pill-idle";
-    if (live) startLive(true); // default: retrospective scan for the chosen signal
   }
 
   $("sim-select").addEventListener("change", (e) => { if (e.target.value) pickScenario(e.target.value); });
-  $("live-select").addEventListener("change", (e) => { if (e.target.value) pickScenario(e.target.value); });
-  $("btn-scan").addEventListener("click", () => startLive(true));
-  $("btn-watch").addEventListener("click", () => startLive(false));
   btnOn.addEventListener("click", () => run("on"));
   btnOff.addEventListener("click", () => run("off"));
 
   let initial = params.get("scenario");
-  if (initial === "live") initial = "live-cascade"; // back-compat
-  pickScenario(["cascade", "stuck", "acw", "queue", "live-cascade", "live-stuck", "live-acw", "live-queue"].includes(initial) ? initial : "cascade");
+  pickScenario(["cascade", "stuck", "acw", "queue"].includes(initial) ? initial : "cascade");
 
   // Headless/demo autorun: ?autorun=on|off fires a run on load.
   const autorun = params.get("autorun");

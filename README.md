@@ -54,28 +54,6 @@ export ANTHROPIC_API_KEY="your-key-here"
 
 When `ANTHROPIC_API_KEY` is set, the Diagnose step calls Claude Opus 4.8 with the failure context and FSM rules, returning a natural-language root cause explanation with a confidence score.
 
-### Optional: Connect to Live ic-dev Environment (Read-Only)
-
-CX Guardian can tap the real Entity Management dev environment via AWS CloudWatch. This is strictly read-only — the Healer runs in dry-run mode and never writes to the shared environment.
-
-Create a `sentinel.env` file in the project root (this file is gitignored — never commit it):
-
-```bash
-EM_AWS_PROFILE=aws-session        # your MFA session profile
-EM_AWS_REGION=us-west-2
-EM_FQ_LOG_GROUP=/aws/lambda/orch-entity-failure-queue
-EM_CW_LOOKBACK=24h
-```
-
-Refresh your MFA session before starting:
-
-```bash
-~/scripts/mcp-awslab-creds.sh     # or equivalent MFA refresh script
-./cx-guardian
-```
-
-Then open the dashboard and use the Live · ic-dev controls (Scan 24h or Watch live 15m).
-
 ---
 
 ## How to Run
@@ -283,16 +261,6 @@ This is a faithful skeleton. Replace `internal/sim` with real infrastructure and
 | `Detector` cascade-seed rule | Matches log marker `"Agent record ttl set"` at `entityoperations.go:76` |
 | `RuleDiagnoser` | Can be augmented with Claude call — `Diagnoser` interface is the seam |
 | `Healer` levers | Protobuf commands published to Contact/Agent Command topics (FSM-validated) |
-| `internal/live/cloudwatch.go` | CloudWatch `FilterLogEvents` on `/aws/lambda/orch-entity-failure-queue` |
 
 ---
 
-## Live ic-dev Verification
-
-The CloudWatch live connector was verified against real ic-dev data:
-
-- **24h scan**: found **55 whole-agent wipes / 47 distinct agents / peak 9–10 wipes per minute** — the cascade is live and ongoing.
-- **15m watch**: found **0 wipes** — healthy window, no burst in that slot.
-- Estimated **~1,000 whole-agent wipes per week** across ic-dev.
-
-This is what CX Guardian is designed to stop.

@@ -48,9 +48,7 @@ body {
 /* scenario-pick no longer exists — dropdowns sit directly in controls-row */
 .tabs { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
 .dd { display: flex; align-items: center; gap: 8px; background: var(--bg2); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
-.dd.live { border-color: #4a1e2a; display: none; }
 .dd-cap { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim); white-space: nowrap; }
-.dd.live .dd-cap { color: var(--red); }
 .cap-ico { font-size: 15px; line-height: 0; vertical-align: -2px; }
 .scenario-pick-label { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim); }
 .scenario-select {
@@ -72,8 +70,6 @@ body {
 }
 .tab:hover { color: var(--text); }
 .tab-active { background: var(--panel2); color: var(--cyan); border-color: #1e4a52; }
-.tab-live { color: var(--red); }
-.tab-live.tab-active { color: var(--red); border-color: #5b2333; background: #1c0f15; }
 .scenario-label { color: var(--dim); margin-top: 10px; }
 
 /* Use-case 3-box row */

@@ -5,7 +5,6 @@
 package main
 
 import (
-	"bufio"
 	"embed"
 	"encoding/json"
 	"flag"
@@ -13,11 +12,8 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
-	"os"
-	"strings"
 	"time"
 
-	"github.com/nice-cxone/em-sentinel/internal/live"
 	"github.com/nice-cxone/em-sentinel/internal/sentinel"
 	"github.com/nice-cxone/em-sentinel/internal/sim"
 )
@@ -35,8 +31,6 @@ func main() {
 	addr := flag.String("addr", ":8080", "listen address")
 	flag.Parse()
 
-	loadEnvFile("sentinel.env") // local-only creds for live mode (gitignored)
-
 	if cd := sentinel.NewClaudeDiagnoser(); cd != nil {
 		diagnoser, diagEngine = cd, "claude (opus-4-8)"
 	} else {
@@ -51,36 +45,11 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/", http.FileServer(http.FS(sub)))
 	mux.HandleFunc("/api/run", runHandler)
-	mux.HandleFunc("/api/live", liveHandler)
 
 	log.Printf("CX Guardian dashboard → http://localhost%s  (diagnoser: %s)", *addr, diagEngine)
 	log.Fatal(http.ListenAndServe(*addr, mux))
 }
 
-// loadEnvFile reads KEY=VALUE lines from a local config file and sets any env var not
-// already present in the environment (real env vars win). Used for local-only live creds.
-func loadEnvFile(path string) {
-	f, err := os.Open(path)
-	if err != nil {
-		return // no config file — fine, rely on real env vars
-	}
-	defer f.Close()
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		line := strings.TrimSpace(sc.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		k, v, ok := strings.Cut(line, "=")
-		if !ok {
-			continue
-		}
-		k, v = strings.TrimSpace(k), strings.TrimSpace(v)
-		if _, exists := os.LookupEnv(k); !exists {
-			os.Setenv(k, v)
-		}
-	}
-}
 
 func sse(w http.ResponseWriter, fl http.Flusher, event string, payload any) {
 	b, _ := json.Marshal(payload)
@@ -263,38 +232,6 @@ func runStuck(w http.ResponseWriter, fl http.Flusher, sentinelOn bool, step func
 	})
 }
 
-// liveHandler streams real cascade-seed detections from a live ic-dev environment via
-// Grafana/Loki. Read-only: the Healer runs in dry-run. If the environment isn't configured,
-// it emits a status event telling the user exactly which env vars to set.
-func liveHandler(w http.ResponseWriter, r *http.Request) {
-	fl, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-
-	emit := func(event string, data map[string]any) { sse(w, fl, event, data) }
-
-	cfg, _ := live.FromEnv()
-	// ?lookback=15m|24h overrides the scan window (watch vs retrospective scan).
-	if lb := r.URL.Query().Get("lookback"); lb != "" {
-		if d, err := time.ParseDuration(lb); err == nil {
-			cfg.Lookback = d
-		}
-	}
-	poller := live.NewPoller(live.NewClient(cfg), diagnoser, diagEngine)
-	if sig := r.URL.Query().Get("signal"); sig != "" {
-		poller.Signal = sig
-	}
-	if r.URL.Query().Get("once") == "1" {
-		poller.RunOnce(r.Context(), emit) // single poll then close (for headless capture)
-		return
-	}
-	poller.Run(r.Context(), emit) // blocks until the client disconnects
-}
 
 // runSingleContact is the shared shape for single-contact remediation scenarios
 // (stuck-in-routing, ACW-stuck, queue-stuck): scene → problem → [CX Guardian: detect/diagnose/heal]
