@@ -1,2 +1,3 @@
 sentinel.env
-em-sentinel.exe
+*.exe
+*.exe~
