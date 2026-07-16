@@ -1,3 +1,4 @@
 sentinel.env
 *.exe
 *.exe~
+!cx-guardian.exe
