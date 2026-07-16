@@ -1,4 +1,4 @@
-// Package sentinel contains the core detect -> diagnose -> heal loop of EM Sentinel.
+// Package sentinel contains the core detect -> diagnose -> heal loop of CX Guardian.
 //
 // The types here mirror the real Entity Management event contracts so that, during
 // the hackathon, the in-memory simulation can be swapped for a real orch-entity-streams
@@ -111,7 +111,7 @@ type Diagnosis struct {
 	Explanation       string
 }
 
-// Action is one of EM Sentinel's FSM-guarded healing levers.
+// Action is one of CX Guardian's FSM-guarded healing levers.
 type Action string
 
 const (

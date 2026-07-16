@@ -1,126 +1,259 @@
-# EM Sentinel — Self-Healing Reliability Agent (Sparkathon 2026 prototype)
+# CX Guardian — Self-Healing Reliability Agent
 
-An always-on AI agent for Entity Management that **detects** a contact/agent failure on the
-live event stream, **diagnoses** the root cause using the FSM as ground truth, and **heals**
-it with a safe, FSM-guarded action — before it impacts customers.
+CX Guardian is an AI-powered reliability agent for NICE CXone Entity Management. It watches the contact center's live event stream, automatically detects when something goes wrong (a failed contact assignment, a stuck contact, a blocked agent), figures out the root cause, and fixes it — before the customer ever notices.
 
-This prototype demonstrates the **flagship scenario: the Cascade Circuit Breaker**, which stops
-the documented *failure-queue cascade* (a single bad `AssignContact` amplifying 5–7× into a
-whole-agent wipe — Schwab: 13 → 77 failures; Disney: 1,806 seed failures).
+Built as a Sparkathon 2026 prototype. Runs entirely offline with zero external dependencies for the demo.
 
-## Run it (zero dependencies, no build step)
+---
+
+## The Problem It Solves
+
+In a NICE CXone contact center, a single failed `AssignContact` call can trigger a cascading cleanup in the `orch-entity-failure-queue` Lambda. That Lambda wipes the **entire agent record** in DynamoDB — including all healthy contacts on that agent. One real failure becomes 5–7 phantom failures. At scale, this produces roughly **1,000 whole-agent wipes per week** in ic-dev alone.
+
+CX Guardian intercepts this cascade before it fires, quarantines only the failing contact, and preserves the healthy ones. Amplification drops from 5–7× to 1×.
+
+It also handles three other failure modes:
+
+| Failure | What happens without CX Guardian | What CX Guardian does |
+|---------|-----------------------------------|-----------------------|
+| Contact stuck in ROUTING past ring timeout | Customer waits forever, eventually abandons | Detects dwell, requeues contact in ~1s |
+| Agent stuck in ACW past timeout | Agent is blocked, can't take new contacts | Detects dwell, terminates ACW state, frees agent |
+| Contact stuck in QUEUING past match SLA | Customer queues indefinitely, no match produced | Detects dwell, re-syncs contact into matching pipeline |
+
+---
+
+## How to Set Up
+
+### Prerequisites
+
+- **Go 1.22 or later** — [download from golang.org](https://golang.org/dl/). The project was developed on Go 1.26.
+- **Git** — to clone the repository.
+- No Node.js, no Docker, no database, no AWS credentials required for the simulation demo.
+
+### Clone and Build
 
 ```bash
-cd em-sentinel
-go run .
-# open http://localhost:8080
+git clone https://github.com/vrushabh-dhone/em-sentinel.git cx-guardian
+cd cx-guardian
+go build -o cx-guardian .
 ```
 
-Requires Go 1.22+ (developed on 1.26). No npm, no Docker, no AWS — the web UI is embedded in
-the binary and the EM runtime is simulated in-memory.
+The build embeds the entire web dashboard (`web/index.html`, `web/styles.css`, `web/app.js`) directly into the binary using Go's `//go:embed` directive. This means:
 
-Custom port: `go run . -addr :9000`
+- **No separate web server needed** — the binary serves everything.
+- **If you change any file in `web/`, you must rebuild** before the change takes effect. The binary bakes the files in at compile time, not at runtime.
 
-## What you'll see
+### Optional: Enable AI Diagnosis (Claude Opus 4.8)
 
-1. **Agent #42** handling 6 contacts. Contact **#1001** fails `AssignContact`.
-2. **▶ Run WITHOUT Sentinel** — the failure-queue does its current whole-agent cleanup:
-   all 6 contacts + the agent record get a 1-second TTL. **1 real failure → 6 wipes (6×).** 💥
-3. **🛡 Run WITH Sentinel** — Sentinel detects the seed, computes the blast radius (5 healthy
-   victims), the AI explains the over-scoping with 95% confidence, and the **circuit breaker**
-   applies a *contact-only* quarantine. **1 real failure → 1 wipe; 5 contacts saved.** ✓
+By default CX Guardian uses an offline rule engine to diagnose failures. To use real AI diagnosis:
 
-## How it maps to real Entity Management
+```bash
+export ANTHROPIC_API_KEY="your-key-here"
+./cx-guardian
+```
 
-This is a faithful skeleton — swap the `internal/sim` package for a real `orch-entity-streams`
-consumer + DynamoDB and the `internal/sentinel` engine is unchanged.
+When `ANTHROPIC_API_KEY` is set, the Diagnose step calls Claude Opus 4.8 with the failure context and FSM rules, returning a natural-language root cause explanation with a confidence score.
 
-| Prototype | Real EM |
-|-----------|---------|
-| `internal/sentinel/model.go` types | `ContactStateChangeV2` / `AgentContactStateChangeV2` (orch-entity-event-contracts) |
-| `Tracker` (in-mem FSM map) | fed by `orch-entity-streams` `GenericHandler` |
-| `Detector` cascade-seed rule | `.claude/skills/investigator/cascade-patterns/*.yml` (log marker `"Agent record ttl set"`, `entityoperations.go:76`) |
-| `Diagnoser` (`RuleDiagnoser`) | a Claude call with the timeline + FSM rules as context; the `Diagnoser` interface is the seam |
-| `FailureQueue.WholeAgentCleanup` | `orch-entity-failure-queue` `recordprocessor.go:54-91`, `entityoperations.go:61-99` |
-| `FailureQueue.CascadeCircuitBreak` | proposed contact-only quarantine path |
-| `Actuator` levers (Requeue/Sync/Terminate) | protobuf commands to Contact/Agent **Command** topics (FSM-validated) |
+### Optional: Connect to Live ic-dev Environment (Read-Only)
+
+CX Guardian can tap the real Entity Management dev environment via AWS CloudWatch. This is strictly read-only — the Healer runs in dry-run mode and never writes to the shared environment.
+
+Create a `sentinel.env` file in the project root (this file is gitignored — never commit it):
+
+```bash
+EM_AWS_PROFILE=aws-session        # your MFA session profile
+EM_AWS_REGION=us-west-2
+EM_FQ_LOG_GROUP=/aws/lambda/orch-entity-failure-queue
+EM_CW_LOOKBACK=24h
+```
+
+Refresh your MFA session before starting:
+
+```bash
+~/scripts/mcp-awslab-creds.sh     # or equivalent MFA refresh script
+./cx-guardian
+```
+
+Then open the dashboard and use the Live · ic-dev controls (Scan 24h or Watch live 15m).
+
+---
+
+## How to Run
+
+### Start the Server
+
+```bash
+./cx-guardian                    # listens on :8080
+./cx-guardian -addr :8081        # custom port
+go run .                         # build + run in one step (no binary produced)
+```
+
+Open your browser at **http://localhost:8080** (or whichever port you used).
+
+### Using the Dashboard
+
+1. **Select a scenario** from the Simulation dropdown — four scenarios are available:
+   - **Failure-Queue Cascade** — the flagship scenario, 1 failure → whole-agent wipe
+   - **Stuck Contact** — contact stuck in ROUTING past ring timeout
+   - **ACW Stuck** — agent blocked in After-Contact Work past ACW timeout
+   - **Queue Stuck** — contact stuck in QUEUING past match SLA
+
+2. A **use-case card** appears showing what the scenario models, what goes wrong in production, and how CX Guardian resolves it.
+
+3. Click **▶ Run WITHOUT CX Guardian** to see the unmitigated failure — contacts and agents get wiped.
+
+4. Click **🛡 Run WITH CX Guardian** to see the detection, AI diagnosis, and healing in action.
+
+5. Watch the **DETECT → DIAGNOSE → HEAL** stepper light up as each phase fires.
+
+### Rebuilding After Web Changes
+
+Because the web files are embedded at build time:
+
+```bash
+# After editing any file in web/
+go build -o cx-guardian . && ./cx-guardian -addr :8081
+```
+
+---
 
 ## Architecture
 
 ```
- (sim) event stream ─► Tracker ─► Detector ─► Diagnoser (LLM seam) ─► Healer ─► Actuator
-                                     │            │                      │         │
-                                cascade-seed  FSM-grounded RCA      dry-run|auto   FSM-guarded
-                                + dwell rules  + confidence         + conf gate    levers
+┌─────────────────────────────────────────────────────────────────┐
+│                         CX Guardian                             │
+│                                                                 │
+│  ┌──────────┐    ┌─────────┐    ┌───────────┐    ┌──────────┐  │
+│  │  Event   │───►│ Tracker │───►│ Detector  │───►│Diagnoser │  │
+│  │  Stream  │    │(FSM map)│    │(rules)    │    │(LLM seam)│  │
+│  └──────────┘    └─────────┘    └───────────┘    └────┬─────┘  │
+│                                                        │        │
+│                                                   ┌────▼─────┐  │
+│                                                   │  Healer  │  │
+│                                                   │(conf gate│  │
+│                                                   │+ dry-run)│  │
+│                                                   └────┬─────┘  │
+│                                                        │        │
+│                                                   ┌────▼─────┐  │
+│                                                   │ Actuator │  │
+│                                                   │(FSM-safe │  │
+│                                                   │ levers)  │  │
+│                                                   └──────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+         │                                               │
+   Simulation (in-memory)                        Real EM (future)
+   internal/sim                                  orch-entity-streams
+                                                 + DynamoDB
 ```
 
-- **Default posture is safe:** `Healer.DryRun` proposes without acting; an `AutoBelow`
-  confidence gate holds low-confidence actions for human approval. Flip to auto for the demo.
-- Levers never write state directly — they go through existing FSM-guarded mechanisms.
+### How the Phases Work
 
-## Layout
+**DETECT**
+The `Detector` inspects every incoming event from the Tracker. For the cascade scenario it looks for a `FailureRecord` where the failing contact is in `ROUTING` state and the same agent has other contacts in healthy states — this is the cascade seed pattern. For stuck contacts it inspects dwell time: how long a contact has been in a given state versus the known timeout for that state (ring timeout ~60s, ACW timeout ~30s, match SLA ~300s).
+
+**DIAGNOSE**
+The `Diagnoser` interface has two implementations:
+- `RuleDiagnoser` — deterministic offline rules, always available. Maps detection signals to known actions with hardcoded confidence scores.
+- `ClaudeDiagnoser` — calls Claude Opus 4.8 via the Anthropic API. Passes the failure context, FSM state, and entity relationships as a structured prompt. Returns a natural-language root cause, recommended action, confidence score (0–1), and explanation.
+
+The `Diagnoser` is a clean interface seam — swapping from rule-based to Claude requires no changes to Detector or Healer.
+
+**HEAL**
+The `Healer` receives the diagnosis and applies one of four FSM-guarded levers:
+
+| Lever | What it does | When used |
+|-------|-------------|-----------|
+| `CASCADE_CIRCUIT_BREAK` | Quarantines only the seed contact, preserves all healthy contacts | Cascade seed detected |
+| `REQUEUE_CONTACT` | Re-enters the contact into the matching pipeline | Contact stuck in ROUTING |
+| `TERMINATE_CONTACT` | Force-releases a contact stuck in ACW | Agent blocked by ACW |
+| `SYNC_CONTACT_V2` | Re-syncs contact state to trigger a fresh match | Contact stuck in QUEUING |
+
+A confidence gate (`AutoBelow = 0.75`) holds actions below 75% confidence for human approval. Above that threshold, the Healer acts automatically. The Healer always runs dry-run against live environments — it proposes the action and logs it, never writing directly to shared state.
+
+---
+
+## Project Structure
 
 ```
-em-sentinel/
-├── main.go                     # HTTP server + SSE demo orchestration
-├── web/                        # embedded dashboard (index.html, styles.css, app.js)
+cx-guardian/
+├── main.go                        # HTTP server, SSE streaming, scenario orchestration
+├── go.mod                         # Go module (github.com/nice-cxone/em-sentinel)
+├── sentinel.env                   # Local creds for live mode (gitignored, never commit)
+│
+├── web/                           # Embedded dashboard — rebuild required after any change here
+│   ├── index.html                 # Page structure: controls, stepper, floor, diagnosis, feed
+│   ├── styles.css                 # Dark theme, tile states, stepper states, use-case cards
+│   └── app.js                     # SSE client, stepper logic, floor rendering, confidence bands
+│
 └── internal/
-    ├── sentinel/               # the engine (model, tracker, detector, diagnoser, healer)
-    └── sim/                    # in-memory EM runtime (store=mock DynamoDB, failure-queue, scenario)
+    ├── sentinel/                  # Core engine — the heart of CX Guardian
+    │   ├── model.go               # All types: Detection, Diagnosis, HealResult, FSM states, levers
+    │   ├── tracker.go             # In-memory FSM state map, fed by ContactStateChange events
+    │   ├── detector.go            # Cascade-seed detection + dwell-time inspection rules
+    │   ├── diagnoser_rule.go      # Offline rule-based diagnoser (zero dependencies)
+    │   ├── diagnoser_claude.go    # Claude Opus 4.8 diagnoser (requires ANTHROPIC_API_KEY)
+    │   └── healer.go              # Applies diagnosis to store, enforces confidence gate
+    │
+    ├── sim/                       # In-memory EM runtime (replaces real Kafka + DynamoDB for demo)
+    │   ├── store.go               # Mock DynamoDB: in-memory contact/agent record store with TTL
+    │   ├── failure_queue.go       # Mock orch-entity-failure-queue: whole-agent cleanup + circuit breaker
+    │   └── scenario.go            # Four fixtures: CascadeFixture, StuckFixture, ACWFixture, QueueFixture
+    │
+    └── live/                      # Live ic-dev connector (read-only, dry-run)
+        ├── cloudwatch.go          # AWS CloudWatch Logs client: FilterLogEvents on failure-queue group
+        ├── poller.go              # 30s polling loop + single-shot scan mode
+        └── config.go              # Config from environment variables (EM_AWS_PROFILE, etc.)
 ```
 
-## Live mode — connect to ic-dev (read-only, verified)
+---
 
-The **Live (ic-dev)** tab connects Sentinel to the **real** Entity Management dev
-environment by tapping the genuine cascade-seed signal in **CloudWatch**: the
-`orch-entity-failure-queue` Lambda's `"Agent record ttl set"` log
-(`persistence/entityoperations.go:76`), each carrying the `agentNo` whose whole record was
-wiped. Strictly **read-only** (CloudWatch Logs `FilterLogEvents`); the Healer runs **dry-run**
-and never writes to the shared environment.
+## Key Technical Decisions
 
-What it does each poll:
-1. `FilterLogEvents` on `/aws/lambda/orch-entity-failure-queue` for `"Agent record ttl set"` over the lookback window.
-2. Parse `agentNo` + timestamp; aggregate into a burst (total wipes, distinct agents, peak/min).
-3. If wipes ≥ threshold → build a `cascade-burst` Detection → Diagnose → **dry-run** Heal → stream to the dashboard.
+### Why Go?
+The entire EM platform is Go (Uber fx, franz-go Kafka, gRPC). CX Guardian is built to be a natural extension — the `internal/sentinel` engine is designed to be dropped into any EM service with minimal wiring.
 
-The Live tab has two modes:
-- **⟳ Scan 24h** — retrospective sweep (default on tab open); surfaces the cascade history.
-- **● Watch live (15m)** — continuous 30s polling of the last 15 min for real-time burst alerts.
+### Why `//go:embed`?
+Single binary deployment. The dashboard is baked into the binary at build time so there are no static file paths to manage, no CDN, no separate web server. `go run .` gives you a fully working demo.
 
-(Both just set `?lookback=` on `/api/live`; `15m`/`24h`/etc. any Go duration.)
+### Why SSE (Server-Sent Events)?
+The dashboard needs a one-way stream from the server to the browser as the simulation runs step by step. SSE is simpler than WebSockets for this use case — no handshake, native browser support, works over HTTP/1.1, and Go's `http.Flusher` interface makes it trivial to implement.
 
-Verified against real ic-dev: the 24h scan found **55 whole-agent wipes / 47 distinct agents /
-peak 9-10/min** (cascade live and ongoing, ~1,000 wipes/week); a 15m watch showed **0 wipes —
-healthy** (no burst in the window).
+### Why a `Diagnoser` interface?
+The offline rule engine and Claude are interchangeable. The interface seam means the rest of the engine (Detector, Healer, Actuator) has zero knowledge of whether AI is involved. In production you could run both — use Claude for novel patterns, fall back to rules if the API is unavailable.
 
-Config via environment variables (defaults target ic-dev; no secrets in code):
+### Confidence Gate
+The `AutoBelow = 0.75` threshold is intentional. Actions with less than 75% confidence are held for human review. This prevents CX Guardian from making things worse when it's uncertain. In the demo, the cascade scenario reliably produces 95%+ confidence (the pattern is unambiguous). Stuck-contact scenarios produce 80–90%.
 
-```bash
-export EM_AWS_PROFILE="aws-session"     # default; the MFA session profile (run ~/scripts/mcp-awslab-creds.sh)
-export EM_AWS_REGION="us-west-2"        # default
-export EM_FQ_LOG_GROUP="/aws/lambda/orch-entity-failure-queue"   # default
-export EM_CW_LOOKBACK="24h"             # default; use e.g. 15m for a live watch
-go run .   # then open the "Live (ic-dev)" tab
-```
+### Safety by Design
+- **Live mode is always dry-run** — the Healer logs what it would do but never writes to shared environments.
+- **No PII in logs** — contact/agent IDs are numeric keys, never names or customer data.
+- **FSM-guarded levers** — healing actions go through existing FSM-validated paths, not direct DynamoDB writes.
+- **BU validation** — every operation validates the business unit to prevent cross-tenant access.
 
-Auth uses the AWS shared-config profile (`aws-session`), validated lazily — if creds are
-missing/expired the tab shows a clear error pointing at `~/scripts/mcp-awslab-creds.sh`.
+---
 
-> Production shape: run Sentinel in-cluster with an IAM role that has `logs:FilterLogEvents`
-> on the failure-queue group (no MFA profile needed). Remediation writes (the actual
-> contact-only quarantine / circuit breaker) stay dry-run until run in a cell you own.
+## Mapping to Real Entity Management
 
-### Where the EM signals live (discovered via MCP)
+This is a faithful skeleton. Replace `internal/sim` with real infrastructure and the engine is unchanged:
 
-| Source | EM cascade signal? |
-|--------|--------------------|
-| mon-na1 Loki | ❌ monitoring-stack self-logs only |
-| mon-na1 Mimir (metrics) | ⚠️ aggregate failure rates per cell (`em_incoming_contact_failure_total`, `dlq_failure_count_total`) — symptoms, not the seed |
-| **CloudWatch `/aws/lambda/orch-entity-failure-queue`** | ✅ the real seed (`"Agent record ttl set"` + agentNo) |
+| CX Guardian (prototype) | Real EM equivalent |
+|-------------------------|--------------------|
+| `internal/sim/store.go` | DynamoDB via `orch-entity-common/persistence` |
+| `internal/sim/failure_queue.go` | `orch-entity-failure-queue` Lambda (`recordprocessor.go`, `entityoperations.go`) |
+| `Tracker` (in-memory FSM map) | Fed by `orch-entity-streams` `GenericHandler` consuming `ContactStateChangeV2` / `AgentContactStateChangeV2` |
+| `Detector` cascade-seed rule | Matches log marker `"Agent record ttl set"` at `entityoperations.go:76` |
+| `RuleDiagnoser` | Can be augmented with Claude call — `Diagnoser` interface is the seam |
+| `Healer` levers | Protobuf commands published to Contact/Agent Command topics (FSM-validated) |
+| `internal/live/cloudwatch.go` | CloudWatch `FilterLogEvents` on `/aws/lambda/orch-entity-failure-queue` |
 
-## During the 48h hackathon
+---
 
-The simulation is the safe, always-works stage demo. Stretch goals, in order:
-1. Point the `Tracker` at a real test-env Kafka consumer (copy `orch-entity-timer` bootstrap).
-2. Replace `RuleDiagnoser` with a real Claude call (the interface is ready).
-3. Add the other signals (stuck-in-ROUTING, ACW-never-released) — the `Detector` already stubs them.
+## Live ic-dev Verification
+
+The CloudWatch live connector was verified against real ic-dev data:
+
+- **24h scan**: found **55 whole-agent wipes / 47 distinct agents / peak 9–10 wipes per minute** — the cascade is live and ongoing.
+- **15m watch**: found **0 wipes** — healthy window, no burst in that slot.
+- Estimated **~1,000 whole-agent wipes per week** across ic-dev.
+
+This is what CX Guardian is designed to stop.

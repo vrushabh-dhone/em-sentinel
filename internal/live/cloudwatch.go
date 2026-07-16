@@ -1,4 +1,4 @@
-// Package live is the read-only adapter that connects EM Sentinel to a LIVE Entity
+// Package live is the read-only adapter that connects CX Guardian to a LIVE Entity
 // Management environment (ic-dev) by tapping the real cascade-seed signal in CloudWatch:
 // the orch-entity-failure-queue Lambda's "Agent record ttl set" log (entityoperations.go:76),
 // each carrying the agentNo whose whole record was wiped.

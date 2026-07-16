@@ -1,4 +1,4 @@
-// Command em-sentinel runs the EM Sentinel demo: a self-healing reliability agent for
+// Command cx-guardian runs the CX Guardian demo: a self-healing reliability agent for
 // Entity Management, with an embedded web dashboard. No external dependencies to run the
 // demo offline — `go run .` and open http://localhost:8080. If ANTHROPIC_API_KEY is set,
 // the diagnose step uses Claude (Opus 4.8); otherwise it uses the offline rule engine.
@@ -53,7 +53,7 @@ func main() {
 	mux.HandleFunc("/api/run", runHandler)
 	mux.HandleFunc("/api/live", liveHandler)
 
-	log.Printf("EM Sentinel dashboard → http://localhost%s  (diagnoser: %s)", *addr, diagEngine)
+	log.Printf("CX Guardian dashboard → http://localhost%s  (diagnoser: %s)", *addr, diagEngine)
 	log.Fatal(http.ListenAndServe(*addr, mux))
 }
 
@@ -246,7 +246,7 @@ func runStuck(w http.ResponseWriter, fl http.Flusher, sentinelOn bool, step func
 		"💥 Contact %d stuck in ROUTING — customer abandons; needs manual requeue.", sc.SeedContact)}
 	if recovered {
 		verdict = map[string]any{"good": true, "text": fmt.Sprintf(
-			"🛡  Sentinel requeued contact %d in ~1s — recovered, customer kept.", sc.SeedContact)}
+			"🛡  CX Guardian requeued contact %d in ~1s — recovered, customer kept.", sc.SeedContact)}
 	}
 	stuckCount, recoveredCount, wait, mttr := 1, 0, "∞", "manual"
 	if recovered {
@@ -297,7 +297,7 @@ func liveHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // runSingleContact is the shared shape for single-contact remediation scenarios
-// (stuck-in-routing, ACW-stuck, queue-stuck): scene → problem → [Sentinel: detect/diagnose/heal]
+// (stuck-in-routing, ACW-stuck, queue-stuck): scene → problem → [CX Guardian: detect/diagnose/heal]
 // → scene → summary. The Detection's RecommendedAction (from the diagnoser) selects the lever.
 func runSingleContact(w http.ResponseWriter, fl http.Flusher, sentinelOn bool, step func(),
 	store *sim.Store, fq *sim.FailureQueue, agentNo int32,
@@ -357,7 +357,7 @@ func runACW(w http.ResponseWriter, fl http.Flusher, sentinelOn bool, step func()
 		fmt.Sprintf("⚡ ACW STUCK DETECTED [WARN] — contact %d in ACW past timeout; agent %d blocked", sc.SeedContact, sc.AgentNo),
 		fmt.Sprintf("no remediation — agent %d stays blocked; new contacts can't route to it.", sc.AgentNo),
 		fmt.Sprintf("💥 Agent %d blocked in ACW — contact %d never released; agent idle-but-unavailable.", sc.AgentNo, sc.SeedContact),
-		fmt.Sprintf("🛡  Sentinel released contact %d (TerminateContact) — agent %d free to take contacts again.", sc.SeedContact, sc.AgentNo),
+		fmt.Sprintf("🛡  CX Guardian released contact %d (TerminateContact) — agent %d free to take contacts again.", sc.SeedContact, sc.AgentNo),
 		det, stats)
 }
 
@@ -385,7 +385,7 @@ func runQueue(w http.ResponseWriter, fl http.Flusher, sentinelOn bool, step func
 		fmt.Sprintf("⚡ STUCK-IN-QUEUE DETECTED [WARN] — contact %d past match SLA, agents available", sc.SeedContact),
 		"no remediation — contact waits indefinitely; customer abandons.",
 		fmt.Sprintf("💥 Contact %d stuck in QUEUING — match never produced; customer abandons.", sc.SeedContact),
-		fmt.Sprintf("🛡  Sentinel re-synced contact %d (SyncContactV2) — re-entered matching, customer kept.", sc.SeedContact),
+		fmt.Sprintf("🛡  CX Guardian re-synced contact %d (SyncContactV2) — re-entered matching, customer kept.", sc.SeedContact),
 		det, stats)
 }
 
