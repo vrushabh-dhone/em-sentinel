@@ -23,72 +23,80 @@
   </header>
 
   <section class="controls">
-    <div class="scenario-pick">
-      <div class="tabs">
-        <div class="dd">
-          <span class="dd-cap"><span class="cap-ico">🧪</span> Simulation</span>
-          <select id="sim-select" class="scenario-select" title="Simulation scenario">
-            <option value="" disabled>SELECT</option>
-            <option value="cascade">Failure-Queue Cascade</option>
-            <option value="stuck">Stuck Contact</option>
-            <option value="acw">ACW Stuck</option>
-            <option value="queue">Queue Stuck</option>
-          </select>
+    <!-- Top row: [1] dropdown · [3] stepper · [2] buttons -->
+    <div class="controls-row">
+      <!-- 1: Simulation dropdown -->
+      <div class="scenario-pick">
+        <div class="tabs">
+          <div class="dd">
+            <span class="dd-cap"><span class="cap-ico">🧪</span> Simulation</span>
+            <select id="sim-select" class="scenario-select" title="Simulation scenario">
+              <option value="" disabled>SELECT</option>
+              <option value="cascade">Failure-Queue Cascade</option>
+              <option value="stuck">Stuck Contact</option>
+              <option value="acw">ACW Stuck</option>
+              <option value="queue">Queue Stuck</option>
+            </select>
+          </div>
+          <div class="dd live">
+            <span class="dd-cap"><span class="cap-ico">●</span> Live · ic-dev</span>
+            <select id="live-select" class="scenario-select" title="Live ic-dev scenario">
+              <option value="" disabled>SELECT</option>
+              <option value="live-cascade">Failure-Queue Cascade</option>
+              <option value="live-stuck">Stuck Contact</option>
+              <option value="live-acw">ACW Stuck</option>
+              <option value="live-queue">Queue Stuck</option>
+            </select>
+          </div>
         </div>
-        <div class="dd live">
-          <span class="dd-cap"><span class="cap-ico">●</span> Live · ic-dev</span>
-          <select id="live-select" class="scenario-select" title="Live ic-dev scenario">
-            <option value="" disabled>SELECT</option>
-            <option value="live-cascade">Failure-Queue Cascade</option>
-            <option value="live-stuck">Stuck Contact</option>
-            <option value="live-acw">ACW Stuck</option>
-            <option value="live-queue">Queue Stuck</option>
-          </select>
+        <div id="scenario-label" class="scenario-label"></div>
+      </div>
+
+      <!-- 3: Pipeline stepper (inline) -->
+      <div class="stepper" id="stepper">
+        <div class="step" id="step-detect">
+          <div class="step-dot"></div>
+          <div class="step-label">DETECT</div>
+        </div>
+        <div class="step-line" id="step-line-1"></div>
+        <div class="step" id="step-diagnose">
+          <div class="step-dot"></div>
+          <div class="step-label">DIAGNOSE</div>
+        </div>
+        <div class="step-line" id="step-line-2"></div>
+        <div class="step" id="step-heal">
+          <div class="step-dot"></div>
+          <div class="step-label">HEAL</div>
         </div>
       </div>
-      <div id="scenario-label" class="scenario-label"></div>
-      <div id="usecase-card" class="usecase-card hidden">
-        <div class="uc-box uc-box-usecase">
-          <div class="uc-chip">🎯 Use Case</div>
-          <div id="uc-usecase" class="uc-body"></div>
-        </div>
-        <div class="uc-box uc-box-problem">
-          <div class="uc-chip">⚠ Problem in Production</div>
-          <div id="uc-problem" class="uc-body"></div>
-        </div>
-        <div class="uc-box uc-box-fix">
-          <div class="uc-chip">🛡 How Sentinel Resolves It</div>
-          <div id="uc-fix" class="uc-body"></div>
-        </div>
+
+      <!-- 2: Run buttons -->
+      <div class="buttons">
+        <button id="btn-off" class="btn btn-danger">▶ Run WITHOUT Sentinel</button>
+        <button id="btn-on" class="btn btn-safe">🛡 Run WITH Sentinel</button>
+      </div>
+      <div id="live-controls" class="buttons" style="display:none">
+        <button id="btn-scan" class="btn btn-safe">⟳ Scan 24h</button>
+        <button id="btn-watch" class="btn btn-danger">● Watch live (15m)</button>
       </div>
     </div>
-    <div class="buttons">
-      <button id="btn-off" class="btn btn-danger">▶ Run WITHOUT Sentinel</button>
-      <button id="btn-on" class="btn btn-safe">🛡 Run WITH Sentinel</button>
-    </div>
-    <div id="live-controls" class="buttons" style="display:none">
-      <button id="btn-scan" class="btn btn-safe">⟳ Scan 24h</button>
-      <button id="btn-watch" class="btn btn-danger">● Watch live (15m)</button>
+
+    <!-- Use-case card: full width below the row -->
+    <div id="usecase-card" class="usecase-card hidden">
+      <div class="uc-box uc-box-usecase">
+        <div class="uc-chip">🎯 Use Case</div>
+        <div id="uc-usecase" class="uc-body"></div>
+      </div>
+      <div class="uc-box uc-box-problem">
+        <div class="uc-chip">⚠ Problem in Production</div>
+        <div id="uc-problem" class="uc-body"></div>
+      </div>
+      <div class="uc-box uc-box-fix">
+        <div class="uc-chip">🛡 How Sentinel Resolves It</div>
+        <div id="uc-fix" class="uc-body"></div>
+      </div>
     </div>
   </section>
-
-  <!-- Pipeline stepper: lights up as DETECT → DIAGNOSE → HEAL fire -->
-  <div class="stepper" id="stepper">
-    <div class="step" id="step-detect">
-      <div class="step-dot"></div>
-      <div class="step-label">DETECT</div>
-    </div>
-    <div class="step-line" id="step-line-1"></div>
-    <div class="step" id="step-diagnose">
-      <div class="step-dot"></div>
-      <div class="step-label">DIAGNOSE</div>
-    </div>
-    <div class="step-line" id="step-line-2"></div>
-    <div class="step" id="step-heal">
-      <div class="step-dot"></div>
-      <div class="step-label">HEAL</div>
-    </div>
-  </div>
 
   <main class="grid">
     <!-- Left: the contact center floor -->

@@ -41,11 +41,11 @@ body {
 .tagline .dim { color: var(--dim); }
 
 /* Controls */
-.controls {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 20px; padding: 20px 28px; flex-wrap: wrap;
+.controls { padding: 16px 28px 0; }
+.controls-row {
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
 }
-.scenario-pick { display: flex; flex-direction: column; gap: 10px; }
+.scenario-pick { display: flex; flex-direction: column; gap: 6px; }
 .tabs { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
 .dd { display: flex; align-items: center; gap: 8px; background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; }
 .dd.live { border-color: #4a1e2a; display: none; }
@@ -79,7 +79,7 @@ body {
 /* Use-case 3-box row */
 .usecase-card {
   display: grid; grid-template-columns: repeat(3, 1fr);
-  gap: 12px; margin-top: 12px;
+  gap: 12px; margin-top: 14px; padding-bottom: 16px;
 }
 .usecase-card.hidden { display: none; }
 .uc-box {
@@ -232,10 +232,12 @@ body {
 
 .foot { text-align: center; color: var(--dim); padding: 18px; font-size: 12px; border-top: 1px solid var(--line); }
 
-/* Pipeline stepper */
+/* Pipeline stepper — now inline in the controls row */
 .stepper {
   display: flex; align-items: center; justify-content: center;
-  gap: 0; padding: 14px 28px 10px; margin: 0 28px;
+  gap: 0; padding: 8px 20px; flex: 1;
+  background: var(--panel2); border: 1px solid var(--line);
+  border-radius: 10px; min-width: 260px;
 }
 .step { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .step-dot {
