@@ -8,7 +8,7 @@ Built as a Sparkathon 2026 prototype. Runs entirely offline with zero external d
 
 ## The Problem It Solves
 
-In a NICE CXone contact center, a single failed `AssignContact` call can trigger a cascading cleanup in the `orch-entity-failure-queue` Lambda. That Lambda wipes the **entire agent record** in DynamoDB — including all healthy contacts on that agent. One real failure becomes 5–7 phantom failures. At scale, this produces roughly **1,000 whole-agent wipes per week** in ic-dev alone.
+In a NICE CXone contact center, a single failed `AssignContact` call can trigger a cascading cleanup in the `orch-entity-failure-queue` Lambda. That Lambda wipes the **entire agent record** in DynamoDB — including all healthy contacts on that agent. One real failure becomes 5–7 phantom failures. At scale, this produces roughly **1,000 whole-agent wipes per week** in production.
 
 CX Guardian intercepts this cascade before it fires, quarantines only the failing contact, and preserves the healthy ones. Amplification drops from 5–7× to 1×.
 
@@ -195,7 +195,6 @@ A confidence gate (`AutoBelow = 0.75`) holds actions below 75% confidence for hu
 cx-guardian/
 ├── main.go                        # HTTP server, SSE streaming, scenario orchestration
 ├── go.mod                         # Go module (github.com/nice-cxone/em-sentinel)
-├── sentinel.env                   # Local creds for live mode (gitignored, never commit)
 │
 ├── web/                           # Embedded dashboard — rebuild required after any change here
 │   ├── index.html                 # Page structure: controls, stepper, floor, diagnosis, feed
@@ -211,15 +210,10 @@ cx-guardian/
     │   ├── diagnoser_claude.go    # Claude Opus 4.8 diagnoser (requires ANTHROPIC_API_KEY)
     │   └── healer.go              # Applies diagnosis to store, enforces confidence gate
     │
-    ├── sim/                       # In-memory EM runtime (replaces real Kafka + DynamoDB for demo)
-    │   ├── store.go               # Mock DynamoDB: in-memory contact/agent record store with TTL
-    │   ├── failure_queue.go       # Mock orch-entity-failure-queue: whole-agent cleanup + circuit breaker
-    │   └── scenario.go            # Four fixtures: CascadeFixture, StuckFixture, ACWFixture, QueueFixture
-    │
-    └── live/                      # Live ic-dev connector (read-only, dry-run)
-        ├── cloudwatch.go          # AWS CloudWatch Logs client: FilterLogEvents on failure-queue group
-        ├── poller.go              # 30s polling loop + single-shot scan mode
-        └── config.go              # Config from environment variables (EM_AWS_PROFILE, etc.)
+    └── sim/                       # In-memory EM runtime (replaces real Kafka + DynamoDB for demo)
+        ├── store.go               # Mock DynamoDB: in-memory contact/agent record store with TTL
+        ├── failure_queue.go       # Mock orch-entity-failure-queue: whole-agent cleanup + circuit breaker
+        └── scenario.go            # Four fixtures: CascadeFixture, StuckFixture, ACWFixture, QueueFixture
 ```
 
 ---

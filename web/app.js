@@ -14,7 +14,7 @@
   const USECASES = {
     cascade: {
       usecase: "A single failed AssignContact call on one contact triggers the failure-queue Lambda, which scopes cleanup to the whole agent — wiping all healthy contacts for that agent in DynamoDB.",
-      problem: "1 real failure cascades to 5–7× phantom wipes. ~1,000 whole-agent wipes/week in ic-dev. Every healthy contact on the agent loses state, causing customer drops and agent unavailability.",
+      problem: "1 real failure cascades to 5–7× phantom wipes. ~1,000 whole-agent wipes/week in production. Every healthy contact on the agent loses state, causing customer drops and agent unavailability.",
       fix: "CX Guardian detects the cascade seed before the Lambda fires, applies CASCADE_CIRCUIT_BREAK to quarantine only the failing contact, and preserves all healthy contacts. Amplification drops from 5–7× to 1×.",
     },
     stuck: {
