@@ -119,31 +119,62 @@ go build -o cx-guardian . && ./cx-guardian -addr :8081
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         CX Guardian                             │
-│                                                                 │
-│  ┌──────────┐    ┌─────────┐    ┌───────────┐    ┌──────────┐  │
-│  │  Event   │───►│ Tracker │───►│ Detector  │───►│Diagnoser │  │
-│  │  Stream  │    │(FSM map)│    │(rules)    │    │(LLM seam)│  │
-│  └──────────┘    └─────────┘    └───────────┘    └────┬─────┘  │
-│                                                        │        │
-│                                                   ┌────▼─────┐  │
-│                                                   │  Healer  │  │
-│                                                   │(conf gate│  │
-│                                                   │+ dry-run)│  │
-│                                                   └────┬─────┘  │
-│                                                        │        │
-│                                                   ┌────▼─────┐  │
-│                                                   │ Actuator │  │
-│                                                   │(FSM-safe │  │
-│                                                   │ levers)  │  │
-│                                                   └──────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-         │                                               │
-   Simulation (in-memory)                        Real EM (future)
-   internal/sim                                  orch-entity-streams
-                                                 + DynamoDB
+```mermaid
+flowchart TD
+    subgraph SOURCES["📡 Event Sources"]
+        SIM["🧪 Simulation\ninternal/sim\n(in-memory)"]
+        LIVE["☁️ Live ic-dev\nCloudWatch Logs\nread-only"]
+    end
+
+    subgraph ENGINE["⚙️ CX Guardian Engine  (internal/sentinel)"]
+        direction TB
+        TRACKER["🗂️ Tracker\nFSM state map\nContactStateChange events"]
+        DETECTOR["🔍 Detector\nCascade seed · Dwell rules\nblast-radius calc"]
+        DIAGNOSER["🧠 Diagnoser\nRuleDiagnoser offline\nor Claude Opus 4.8"]
+        HEALER["🛡️ Healer\nConfidence gate ≥ 0.75\nDry-run in live mode"]
+        ACTUATOR["⚡ Actuator\nFSM-guarded levers\n4 safe actions"]
+
+        TRACKER -->|"Detection fired"| DETECTOR
+        DETECTOR -->|"Detection + context"| DIAGNOSER
+        DIAGNOSER -->|"Diagnosis + confidence"| HEALER
+        HEALER -->|"Action approved"| ACTUATOR
+    end
+
+    subgraph LEVERS["🔧 Healing Levers"]
+        L1["CASCADE_CIRCUIT_BREAK\nQuarantine seed only"]
+        L2["REQUEUE_CONTACT\nRe-enter matching"]
+        L3["TERMINATE_CONTACT\nRelease ACW block"]
+        L4["SYNC_CONTACT_V2\nRe-trigger FindMatch"]
+    end
+
+    subgraph DASHBOARD["🖥️ Web Dashboard  (web/)"]
+        SSE["SSE Stream\n/api/run · /api/live"]
+        UI["Browser UI\nDetect→Diagnose→Heal\nstepper + floor tiles"]
+        SSE --> UI
+    end
+
+    SIM -->|"ContactStateChange\nFailureRecord"| TRACKER
+    LIVE -->|"FilterLogEvents\nagent wipe signals"| TRACKER
+    ACTUATOR --> L1 & L2 & L3 & L4
+    ENGINE -->|"scene · log · diagnosis\nresult · summary events"| SSE
+
+    style SOURCES fill:#1a2744,stroke:#3b82f6,color:#93c5fd
+    style ENGINE fill:#0f2b27,stroke:#2dd4bf,color:#a7f3ec
+    style LEVERS fill:#1c0f18,stroke:#f43f5e,color:#fecdd3
+    style DASHBOARD fill:#1a1a2e,stroke:#6366f1,color:#c7d2fe
+    style TRACKER fill:#0c2a30,stroke:#22d3ee,color:#a5f3fc
+    style DETECTOR fill:#0c2a30,stroke:#22d3ee,color:#a5f3fc
+    style DIAGNOSER fill:#1e1b4b,stroke:#818cf8,color:#c7d2fe
+    style HEALER fill:#14463f,stroke:#34d399,color:#a7f3ec
+    style ACTUATOR fill:#422006,stroke:#f59e0b,color:#fde68a
+    style L1 fill:#2a141c,stroke:#f43f5e,color:#fecdd3
+    style L2 fill:#2a141c,stroke:#f43f5e,color:#fecdd3
+    style L3 fill:#2a141c,stroke:#f43f5e,color:#fecdd3
+    style L4 fill:#2a141c,stroke:#f43f5e,color:#fecdd3
+    style SSE fill:#1e1b4b,stroke:#6366f1,color:#c7d2fe
+    style UI fill:#1e1b4b,stroke:#6366f1,color:#c7d2fe
+    style SIM fill:#1a2744,stroke:#3b82f6,color:#93c5fd
+    style LIVE fill:#1a2744,stroke:#3b82f6,color:#93c5fd
 ```
 
 ### How the Phases Work
