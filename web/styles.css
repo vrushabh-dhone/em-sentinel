@@ -43,7 +43,7 @@ body {
 /* Controls */
 .controls { padding: 16px 28px 0; }
 .controls-row {
-  display: flex; align-items: stretch; gap: 16px;
+  display: flex; align-items: center; gap: 16px;
 }
 /* scenario-pick no longer exists — dropdowns sit directly in controls-row */
 .tabs { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
@@ -121,7 +121,7 @@ body {
 .buttons { display: flex; gap: 12px; align-items: stretch; }
 .btn {
   border: 1px solid var(--line); background: var(--panel2); color: var(--text);
-  padding: 5px 14px; border-radius: 6px; font-size: 13px; font-weight: 600;
+  padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 600;
   cursor: pointer; transition: transform .08s ease, box-shadow .2s ease, opacity .2s;
 }
 .btn:hover { transform: translateY(-1px); }
